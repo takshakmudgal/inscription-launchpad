@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1750410694756,
+      "tag": "0000_lowly_stryfe",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1750411125974,
+      "tag": "0001_lyrical_praxagora",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1750413528830,
+      "tag": "0002_clean_valeria_richards",
+      "breakpoints": true
+    }
+  ]
+}
