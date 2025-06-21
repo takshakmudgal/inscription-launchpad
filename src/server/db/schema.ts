@@ -22,13 +22,21 @@ export const users = createTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   }),
-  (t) => [index("name_idx").on(t.wallet_address)],
+  (t) => [index("address_idx").on(t.wallet_address)],
 );
 
-export const proposals = createTable("proposal", (d) => ({
-  id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
-  coin_name: d.varchar({ length: 20 }).notNull(),
-  ticker: d.varchar({ length: 4 }).notNull(),
-  description: d.varchar({ length: 160 }).notNull(),
-  website: d.text(),
-}));
+export const proposals = createTable(
+  "proposal",
+  (d) => ({
+    id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
+    coin_name: d.varchar({ length: 20 }).notNull(),
+    ticker: d.varchar({ length: 4 }).notNull(),
+    description: d.varchar({ length: 160 }).notNull(),
+    website: d.text(),
+    x: d.text(),
+    telegra: d.text(),
+    coin_image: d.text().notNull(),
+    coin_banner: d.text(),
+  }),
+  (t) => [index("coin_idx").on(t.coin_name)],
+);
