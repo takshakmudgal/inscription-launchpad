@@ -12,16 +12,23 @@ import { index, pgTableCreator } from "drizzle-orm/pg-core";
  */
 export const createTable = pgTableCreator((name) => `bitmemes_${name}`);
 
-export const posts = createTable(
-  "post",
+export const users = createTable(
+  "user",
   (d) => ({
     id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
-    name: d.varchar({ length: 256 }),
+    wallet_address: d.varchar({ length: 44 }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
-  (t) => [index("name_idx").on(t.name)],
+  (t) => [index("name_idx").on(t.wallet_address)],
 );
+
+export const proposals = createTable("proposal", (d) => ({
+  id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
+  coin_name: d.varchar({ length: 20 }).notNull(),
+  ticker: d.varchar({ length: 4 }).notNull(),
+  description: d.varchar({ length: 160 }).notNull(),
+  website: d.text(),
+}));
