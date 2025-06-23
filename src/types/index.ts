@@ -1,0 +1,114 @@
+export interface User {
+  id: number;
+  walletAddress?: string;
+  twitterId?: string;
+  username?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Proposal {
+  id: number;
+  name: string;
+  ticker: string;
+  description: string;
+  website?: string;
+  twitter?: string;
+  telegram?: string;
+  imageUrl: string;
+  bannerUrl?: string;
+  submittedBy?: number;
+  votesUp: number;
+  votesDown: number;
+  totalVotes: number;
+  status: "active" | "inscribed" | "rejected";
+  createdAt: string;
+  updatedAt: string;
+  submitter?: User;
+}
+
+export interface Vote {
+  id: number;
+  userId: number;
+  proposalId: number;
+  voteType: "up" | "down";
+  createdAt: string;
+}
+
+export interface Inscription {
+  id: number;
+  proposalId: number;
+  blockHeight: number;
+  blockHash: string;
+  txid: string;
+  inscriptionId?: string;
+  inscriptionUrl?: string;
+  feeRate?: number;
+  totalFees?: number;
+  metadata?: string;
+  unisatOrderId?: string;
+  orderStatus?: string;
+  paymentAddress?: string;
+  paymentAmount?: number;
+  createdAt: string;
+  proposal?: Proposal;
+}
+
+export interface BlockInfo {
+  height: number;
+  hash: string;
+  timestamp: number;
+}
+
+export interface InscriptionPayload {
+  project: string;
+  type: string;
+  block: number;
+  coin: {
+    name: string;
+    ticker: string;
+    description: string;
+    votes: number;
+    website?: string;
+    twitter?: string;
+    telegram?: string;
+  };
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export interface ProposalSubmission {
+  name: string;
+  ticker: string;
+  description: string;
+  website?: string;
+  twitter?: string;
+  telegram?: string;
+  imageUrl: string;
+  bannerUrl?: string;
+}
+
+export interface VoteSubmission {
+  proposalId: number;
+  voteType: "up" | "down";
+  walletAddress?: string;
+}
+
+export interface LeaderboardEntry extends Proposal {
+  rank: number;
+  score: number;
+  isWinner?: boolean;
+}
+
+export interface BitcoinTransaction {
+  txid: string;
+  confirmations: number;
+  blockHeight?: number;
+  blockHash?: string;
+  fee: number;
+}

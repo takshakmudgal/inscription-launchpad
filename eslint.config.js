@@ -1,17 +1,24 @@
+import { dirname } from "path";
+import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
 import tseslint from "typescript-eslint";
 // @ts-ignore -- no types for this plugin
 import drizzle from "eslint-plugin-drizzle";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
+  baseDirectory: __dirname,
 });
 
-export default tseslint.config(
-  {
-    ignores: [".next"],
-  },
-  ...compat.extends("next/core-web-vitals"),
+const eslintConfig = [
+  ...compat.config({
+    extends: ["next/core-web-vitals", "next/typescript"],
+    rules: {
+      "@next/next/no-img-element": "off", // We intentionally use img tags to avoid next/image configuration issues
+    },
+  }),
   {
     files: ["**/*.ts", "**/*.tsx"],
     plugins: {
@@ -58,4 +65,6 @@ export default tseslint.config(
       },
     },
   },
-);
+];
+
+export default eslintConfig;
