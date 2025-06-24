@@ -323,12 +323,6 @@ export function InscriptionOrderModal({
                   : "Create new inscription order"}
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-2xl text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-            >
-              ×
-            </button>
           </div>
 
           {/* Proposal Info */}

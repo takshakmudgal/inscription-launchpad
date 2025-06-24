@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { getActiveOrdersFromStorage } from "./InscriptionModal";
 
 interface ProposalCardProps {
   id: number;
@@ -34,6 +35,76 @@ export function ProposalCard({
 }: ProposalCardProps) {
   const [imageError, setImageError] = useState(false);
   const [isVoting, setIsVoting] = useState<"up" | "down" | null>(null);
+  const [inscriptionStatus, setInscriptionStatus] = useState<{
+    hasActiveOrder: boolean;
+    orderStatus: string;
+    orderId?: string;
+  }>({ hasActiveOrder: false, orderStatus: "" });
+
+  // Check for active inscription orders for this proposal
+  useEffect(() => {
+    const checkInscriptionStatus = async () => {
+      try {
+        // First check local storage for active orders
+        const activeOrders = getActiveOrdersFromStorage();
+        const proposalOrder = Object.values(activeOrders).find(
+          (order) => order.proposalId === id,
+        );
+
+        if (proposalOrder) {
+          // Check the actual status from the API
+          const response = await fetch(
+            `/api/unisat/order/${proposalOrder.orderId}`,
+          );
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              setInscriptionStatus({
+                hasActiveOrder: true,
+                orderStatus: data.data.status,
+                orderId: proposalOrder.orderId,
+              });
+              return;
+            }
+          }
+
+          // Fallback to stored status
+          setInscriptionStatus({
+            hasActiveOrder: true,
+            orderStatus: proposalOrder.status || "pending",
+            orderId: proposalOrder.orderId,
+          });
+        } else {
+          // Check if proposal has an inscription via API
+          const response = await fetch(
+            `/api/proposals/${id}/inscription-status`,
+          );
+          if (response.ok) {
+            const data = await response.json();
+            if (
+              data.success &&
+              data.data.hasInscription &&
+              data.data.orderStatus
+            ) {
+              setInscriptionStatus({
+                hasActiveOrder:
+                  data.data.orderStatus !== "minted" &&
+                  data.data.orderStatus !== "sent",
+                orderStatus: data.data.orderStatus,
+                orderId: data.data.orderId,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error checking inscription status:", error);
+      }
+    };
+
+    if (status === "active") {
+      checkInscriptionStatus();
+    }
+  }, [id, status]);
 
   const handleVote = async (voteType: "up" | "down") => {
     console.log(`🗳️ Vote button clicked: ${voteType} for proposal ${id}`);
@@ -78,6 +149,55 @@ export function ProposalCard({
             Active
           </div>
         );
+    }
+  };
+
+  const getInscriptionStatusDisplay = (orderStatus: string) => {
+    switch (orderStatus) {
+      case "pending":
+        return {
+          text: "⏳ Awaiting Payment",
+          color: "text-yellow-400",
+          bg: "bg-yellow-500/20 border-yellow-500/30",
+        };
+      case "payment_received":
+      case "payment_success":
+        return {
+          text: "💳 Payment Received",
+          color: "text-blue-400",
+          bg: "bg-blue-500/20 border-blue-500/30",
+        };
+      case "inscribing":
+        return {
+          text: "⚡ Creating Inscription",
+          color: "text-purple-400",
+          bg: "bg-purple-500/20 border-purple-500/30",
+        };
+      case "minted":
+      case "sent":
+        return {
+          text: "✅ Inscription Complete",
+          color: "text-green-400",
+          bg: "bg-green-500/20 border-green-500/30",
+        };
+      case "canceled":
+        return {
+          text: "❌ Canceled",
+          color: "text-red-400",
+          bg: "bg-red-500/20 border-red-500/30",
+        };
+      case "refunded":
+        return {
+          text: "↩️ Refunded",
+          color: "text-orange-400",
+          bg: "bg-orange-500/20 border-orange-500/30",
+        };
+      default:
+        return {
+          text: "⏳ Processing",
+          color: "text-yellow-400",
+          bg: "bg-yellow-500/20 border-yellow-500/30",
+        };
     }
   };
 
@@ -250,21 +370,35 @@ export function ProposalCard({
             </>
           )}
 
-          {/* Inscribe Button */}
+          {/* Inscribe Button / Status */}
           {status === "active" ? (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log("🚨 INSCRIBE CLICKED - THIS SHOULD ALWAYS WORK!");
-                handleInscribe();
-              }}
-              className="flex items-center justify-center gap-2 rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-4 py-3 text-sm font-semibold text-purple-400 transition-all hover:scale-105 hover:from-purple-500/30 hover:to-pink-500/30"
-              style={{ pointerEvents: "auto", zIndex: 10 }}
-            >
-              <span>⚡</span>
-              Inscribe
-            </button>
+            inscriptionStatus.hasActiveOrder ? (
+              <button
+                disabled
+                className={`flex w-full cursor-default items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold ${
+                  getInscriptionStatusDisplay(inscriptionStatus.orderStatus).bg
+                } ${getInscriptionStatusDisplay(inscriptionStatus.orderStatus).color}`}
+              >
+                {
+                  getInscriptionStatusDisplay(inscriptionStatus.orderStatus)
+                    .text
+                }
+              </button>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("🚨 INSCRIBE CLICKED - THIS SHOULD ALWAYS WORK!");
+                  handleInscribe();
+                }}
+                className="flex items-center justify-center gap-2 rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-4 py-3 text-sm font-semibold text-purple-400 transition-all hover:scale-105 hover:from-purple-500/30 hover:to-pink-500/30"
+                style={{ pointerEvents: "auto", zIndex: 10 }}
+              >
+                <span>⚡</span>
+                Inscribe
+              </button>
+            )
           ) : status === "inscribed" ? (
             <button
               disabled

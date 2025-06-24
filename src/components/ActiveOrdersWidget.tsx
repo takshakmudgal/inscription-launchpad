@@ -33,6 +33,9 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [checkingOrders, setCheckingOrders] = useState<Set<string>>(new Set());
+  const [orderStatuses, setOrderStatuses] = useState<Record<string, string>>(
+    {},
+  );
 
   // Load active orders from storage
   useEffect(() => {
@@ -43,6 +46,11 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
           (a, b) => b.createdAt - a.createdAt,
         );
         setActiveOrders(orderList);
+
+        // Check status for each order
+        orderList.forEach((order) => {
+          checkOrderStatus(order, false);
+        });
       } catch (error) {
         console.error("Failed to load active orders:", error);
       }
@@ -57,8 +65,10 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
   }, []);
 
   // Function to check order status and remove if complete
-  const checkOrderStatus = async (order: ActiveOrder) => {
-    setCheckingOrders((prev) => new Set(prev).add(order.orderId));
+  const checkOrderStatus = async (order: ActiveOrder, showSpinner = true) => {
+    if (showSpinner) {
+      setCheckingOrders((prev) => new Set(prev).add(order.orderId));
+    }
 
     try {
       const response = await fetch(`/api/unisat/order/${order.orderId}`);
@@ -66,6 +76,12 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
 
       if (response.ok && data.success) {
         const status = data.data.status;
+
+        // Update status in state
+        setOrderStatuses((prev) => ({
+          ...prev,
+          [order.orderId]: status,
+        }));
 
         // If order is complete or failed, remove it from active orders
         if (
@@ -88,11 +104,13 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
     } catch (error) {
       console.error("Failed to check order status:", error);
     } finally {
-      setCheckingOrders((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(order.orderId);
-        return newSet;
-      });
+      if (showSpinner) {
+        setCheckingOrders((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(order.orderId);
+          return newSet;
+        });
+      }
     }
   };
 
@@ -114,6 +132,29 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
     return "Just now";
   };
 
+  const getStatusDisplay = (orderId: string) => {
+    const status = orderStatuses[orderId] || "pending";
+
+    switch (status) {
+      case "pending":
+        return { text: "Payment Pending", color: "text-yellow-400" };
+      case "payment_received":
+      case "payment_success":
+        return { text: "Payment Received", color: "text-blue-400" };
+      case "inscribing":
+        return { text: "Creating Inscription", color: "text-purple-400" };
+      case "minted":
+      case "sent":
+        return { text: "Inscription Complete", color: "text-green-400" };
+      case "canceled":
+        return { text: "Canceled", color: "text-red-400" };
+      case "refunded":
+        return { text: "Refunded", color: "text-orange-400" };
+      default:
+        return { text: "Payment Pending", color: "text-yellow-400" };
+    }
+  };
+
   const handleResumeOrder = (order: ActiveOrder) => {
     onResumeOrder(
       order.orderId,
@@ -122,11 +163,6 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
       order.proposalTicker,
       order.receiveAddress,
     );
-  };
-
-  const handleRemoveOrder = (orderId: string) => {
-    removeOrderFromStorage(orderId);
-    setActiveOrders((prev) => prev.filter((o) => o.orderId !== orderId));
   };
 
   if (activeOrders.length === 0) {
@@ -162,56 +198,55 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
             </div>
 
             <div className="max-h-80 space-y-3 overflow-y-auto">
-              {activeOrders.map((order) => (
-                <div
-                  key={order.orderId}
-                  className="rounded-lg border border-white/10 bg-white/5 p-3"
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-white">
-                        {order.proposalName}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        ${order.proposalTicker} •{" "}
-                        {formatTimeAgo(order.createdAt)}
-                      </p>
+              {activeOrders.map((order) => {
+                const statusDisplay = getStatusDisplay(order.orderId);
+                return (
+                  <div
+                    key={order.orderId}
+                    className="rounded-lg border border-white/10 bg-white/5 p-3"
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-white">
+                          {order.proposalName}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          ${order.proposalTicker} •{" "}
+                          {formatTimeAgo(order.createdAt)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-medium text-yellow-400">
+                          {formatSatoshis(order.amount)}
+                        </p>
+                        <p className={`text-xs ${statusDisplay.color}`}>
+                          {statusDisplay.text}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs font-medium text-yellow-400">
-                        {formatSatoshis(order.amount)}
-                      </p>
-                      <p className="text-xs text-gray-400">Payment Pending</p>
-                    </div>
-                  </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleResumeOrder(order)}
-                      className="flex-1 rounded-md bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1.5 text-xs font-medium text-white transition-all hover:from-purple-600 hover:to-pink-600"
-                    >
-                      Resume
-                    </button>
-                    <button
-                      onClick={() => checkOrderStatus(order)}
-                      disabled={checkingOrders.has(order.orderId)}
-                      className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-white/20 disabled:opacity-50"
-                    >
-                      {checkingOrders.has(order.orderId) ? (
-                        <div className="h-3 w-3 animate-spin rounded-full border border-white/30 border-t-white" />
-                      ) : (
-                        "Check"
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleRemoveOrder(order.orderId)}
-                      className="rounded-md bg-red-500/20 px-3 py-1.5 text-xs font-medium text-red-400 transition-all hover:bg-red-500/30"
-                    >
-                      Remove
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleResumeOrder(order)}
+                        className="flex-1 rounded-md bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1.5 text-xs font-medium text-white transition-all hover:from-purple-600 hover:to-pink-600"
+                      >
+                        Resume
+                      </button>
+                      <button
+                        onClick={() => checkOrderStatus(order)}
+                        disabled={checkingOrders.has(order.orderId)}
+                        className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-white/20 disabled:opacity-50"
+                      >
+                        {checkingOrders.has(order.orderId) ? (
+                          <div className="h-3 w-3 animate-spin rounded-full border border-white/30 border-t-white" />
+                        ) : (
+                          "Check"
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="mt-3 rounded-lg border border-blue-500/30 bg-blue-500/10 p-2">

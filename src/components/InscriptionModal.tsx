@@ -362,19 +362,17 @@ export function InscriptionModal({
           className="w-full max-w-lg rounded-2xl border border-white/20 bg-gradient-to-br from-gray-900/95 to-black/95 p-6 shadow-2xl backdrop-blur-xl"
         >
           {/* Header */}
-          <div className="mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-2xl shadow-lg">
-                {existingOrderId ? "🔄" : "⚡"}
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">
-                  {existingOrderId ? "Resume Inscription" : "Inscribe Proposal"}
-                </h2>
-                <p className="text-sm text-gray-400">
-                  {proposalName} (${proposalTicker})
-                </p>
-              </div>
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-2xl shadow-lg">
+              {existingOrderId ? "🔄" : "⚡"}
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">
+                {existingOrderId ? "Resume Inscription" : "Inscribe Proposal"}
+              </h2>
+              <p className="text-sm text-gray-400">
+                {proposalName} (${proposalTicker})
+              </p>
             </div>
           </div>
 
