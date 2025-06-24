@@ -3,6 +3,10 @@ export interface User {
   walletAddress?: string;
   twitterId?: string;
   username?: string;
+  email?: string;
+  twitter?: string;
+  telegram?: string;
+  bio?: string;
   createdAt: string;
   updatedAt: string;
 }

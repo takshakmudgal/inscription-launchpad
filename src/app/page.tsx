@@ -6,7 +6,14 @@ import { ProposalCard } from "~/components/ProposalCard";
 import { SubmitProposalModal } from "~/components/SubmitProposalModal";
 import { WalletConnectModal } from "~/components/WalletConnectModal";
 import { InscriptionModal } from "~/components/InscriptionModal";
+import { ActiveOrdersWidget } from "~/components/ActiveOrdersWidget";
+import {
+  OrderNotification,
+  useNotifications,
+} from "~/components/OrderNotification";
+import { UserProfileModal } from "~/components/UserProfileModal";
 import { useWallet } from "~/components/providers";
+import { useBackgroundOrderMonitor } from "~/hooks/useBackgroundOrderMonitor";
 import type { Proposal, ApiResponse } from "~/types";
 
 interface ProposalsResponse {
@@ -37,27 +44,135 @@ export default function HomePage() {
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(
     null,
   );
+  const [existingOrderId, setExistingOrderId] = useState<string | undefined>(
+    undefined,
+  );
   const [currentBlock, setCurrentBlock] = useState(4546377);
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"trending" | "new" | "top">(
     "trending",
   );
-  const { walletAddress, isConnected, disconnect } = useWallet();
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const {
+    walletAddress,
+    isConnected,
+    disconnect,
+    userProfile,
+    hasCompleteProfile,
+    updateProfile,
+  } = useWallet();
+  const { notifications, addNotification, removeNotification } =
+    useNotifications();
+
+  // Background order monitoring
+  useBackgroundOrderMonitor({
+    enabled: isConnected,
+    interval: 60000, // Check every minute
+    onOrderComplete: (orderId, status) => {
+      // Refresh both active and inscribed proposals when inscription completes
+      refreshAllData();
+
+      addNotification({
+        type: "success",
+        title: "Inscription Complete! 🎉",
+        message: `Your Bitcoin inscription order (${orderId.slice(0, 8)}...) has been successfully completed. Your meme is now permanently inscribed on Bitcoin!`,
+        duration: 10000,
+      });
+    },
+    onOrderFailed: (orderId, status) => {
+      addNotification({
+        type: "error",
+        title: `Inscription ${status === "canceled" ? "Canceled" : "Failed"} ❌`,
+        message: `Your inscription order (${orderId.slice(0, 8)}...) was ${status}. You can try creating a new order if needed.`,
+        duration: 8000,
+      });
+    },
+  });
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Show profile modal for new users
   useEffect(() => {
-    // Fetch proposals
-    fetch("/api/proposals")
-      .then((res) => res.json())
-      .then((data: ApiResponse<ProposalsResponse>) => {
-        if (data.success && data.data?.proposals) {
-          setProposals(data.data.proposals);
-        }
-      })
-      .catch(console.error);
+    if (isConnected && !hasCompleteProfile && mounted) {
+      // Give a small delay to let wallet connection complete
+      const timer = setTimeout(() => {
+        setIsProfileModalOpen(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isConnected, hasCompleteProfile, mounted]);
+
+  const fetchProposals = async () => {
+    try {
+      // Add timestamp to prevent caching and fetch only active proposals for main section
+      const url = `/api/proposals?status=active&t=${Date.now()}`;
+      console.log("🔍 Fetching active proposals from:", url);
+      const response = await fetch(url, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      });
+      const data: ApiResponse<ProposalsResponse> = await response.json();
+      if (data.success && data.data?.proposals) {
+        setProposals(data.data.proposals);
+        console.log(
+          "🔄 Active proposals refreshed:",
+          data.data.proposals.length,
+          "total",
+          data.data.proposals.map((p) => ({
+            ticker: p.ticker,
+            status: p.status,
+          })),
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching proposals:", error);
+    }
+  };
+
+  const fetchInscribedProposals = async (): Promise<Proposal[]> => {
+    try {
+      // Fetch inscribed proposals separately
+      const url = `/api/proposals?status=inscribed&t=${Date.now()}`;
+      console.log("🔍 Fetching inscribed proposals from:", url);
+      const response = await fetch(url, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      });
+      const data: ApiResponse<ProposalsResponse> = await response.json();
+      if (data.success && data.data?.proposals) {
+        console.log(
+          "🏆 Inscribed proposals refreshed:",
+          data.data.proposals.length,
+          "total",
+          data.data.proposals.map((p) => ({
+            ticker: p.ticker,
+            status: p.status,
+          })),
+        );
+        return data.data.proposals;
+      }
+    } catch (error) {
+      console.error("Error fetching inscribed proposals:", error);
+    }
+    return [];
+  };
+
+  // Add state for inscribed proposals
+  const [inscribedProposals, setInscribedProposals] = useState<Proposal[]>([]);
+
+  useEffect(() => {
+    // Initial data fetch
+    refreshAllData();
 
     // Fetch current block
     fetch("/api/blocks/latest")
@@ -68,7 +183,30 @@ export default function HomePage() {
         }
       })
       .catch(console.error);
+
+    // Set up periodic refresh every 30 seconds to keep data fresh
+    const refreshInterval = setInterval(refreshAllData, 30000);
+
+    return () => clearInterval(refreshInterval);
   }, []);
+
+  // Centralized refresh function for better state management
+  const refreshAllData = async () => {
+    console.log("🔄 Refreshing all proposal data...");
+
+    // Clear existing state first to force UI refresh
+    setProposals([]);
+    setInscribedProposals([]);
+
+    // Force reload from server with strong cache busting
+    const timestamp = Date.now();
+    await Promise.all([
+      fetchProposals(),
+      fetchInscribedProposals().then(setInscribedProposals),
+    ]);
+
+    console.log("✅ All proposal data refreshed successfully");
+  };
 
   const handleProposalSubmit = async (proposal: {
     name: string;
@@ -82,6 +220,18 @@ export default function HomePage() {
       return;
     }
 
+    // Require complete profile for proposal submission
+    if (!hasCompleteProfile) {
+      setIsProfileModalOpen(true);
+      addNotification({
+        type: "error",
+        title: "Profile Required ⚠️",
+        message: "Please complete your profile before submitting proposals.",
+        duration: 5000,
+      });
+      return;
+    }
+
     try {
       const response = await fetch("/api/proposals", {
         method: "POST",
@@ -89,17 +239,40 @@ export default function HomePage() {
         body: JSON.stringify({
           ...proposal,
           walletAddress,
+          submittedBy: userProfile?.id, // Use real user ID
         }),
       });
 
       if (response.ok) {
         const data = (await response.json()) as ApiResponse<Proposal>;
         if (data.success && data.data) {
-          setProposals([data.data, ...proposals]);
+          // Refresh data instead of manually updating state to ensure consistency
+          await refreshAllData();
+          addNotification({
+            type: "success",
+            title: "Proposal Submitted! 🎉",
+            message: `Your meme "${proposal.name}" has been submitted successfully!`,
+            duration: 5000,
+          });
         }
+      } else {
+        const errorData = await response.json();
+        addNotification({
+          type: "error",
+          title: "Submission Failed ❌",
+          message:
+            errorData.error || "Failed to submit proposal. Please try again.",
+          duration: 5000,
+        });
       }
     } catch (error) {
       console.error("Error submitting proposal:", error);
+      addNotification({
+        type: "error",
+        title: "Submission Failed ❌",
+        message: "Failed to submit proposal. Please try again.",
+        duration: 5000,
+      });
     }
   };
 
@@ -107,6 +280,17 @@ export default function HomePage() {
     if (!isConnected) {
       setIsWalletModalOpen(true);
       return;
+    }
+
+    // Encourage profile completion for voting (but don't block it)
+    if (!hasCompleteProfile) {
+      addNotification({
+        type: "info",
+        title: "Complete Your Profile 👤",
+        message:
+          "Consider completing your profile to get the full BitMemes experience!",
+        duration: 3000,
+      });
     }
 
     try {
@@ -117,6 +301,7 @@ export default function HomePage() {
           proposalId,
           voteType,
           walletAddress,
+          userId: userProfile?.id, // Include user ID if available
         }),
       });
 
@@ -125,17 +310,34 @@ export default function HomePage() {
           success: boolean;
         }>;
         if (data.success) {
-          // Refetch proposals to get updated vote counts
-          const proposalsResponse = await fetch("/api/proposals");
-          const proposalsData =
-            (await proposalsResponse.json()) as ApiResponse<ProposalsResponse>;
-          if (proposalsData.success && proposalsData.data?.proposals) {
-            setProposals(proposalsData.data.proposals);
-          }
+          // Refresh all data to get updated vote counts and status
+          await refreshAllData();
+
+          addNotification({
+            type: "success",
+            title: `Vote ${voteType === "up" ? "👍" : "👎"} Recorded!`,
+            message: `Your ${voteType === "up" ? "upvote" : "downvote"} has been counted.`,
+            duration: 2000,
+          });
         }
+      } else {
+        const errorData = await response.json();
+        addNotification({
+          type: "error",
+          title: "Vote Failed ❌",
+          message:
+            errorData.error || "Failed to record vote. Please try again.",
+          duration: 3000,
+        });
       }
     } catch (error) {
       console.error("Error voting:", error);
+      addNotification({
+        type: "error",
+        title: "Vote Failed ❌",
+        message: "Failed to record vote. Please try again.",
+        duration: 3000,
+      });
     }
   };
 
@@ -176,13 +378,8 @@ export default function HomePage() {
 
         if (status.orderStatus === "minted" || status.orderStatus === "sent") {
           alert("This proposal has already been successfully inscribed!");
-          // Refresh proposals to get updated status
-          const proposalsResponse = await fetch("/api/proposals");
-          const proposalsData =
-            (await proposalsResponse.json()) as ApiResponse<ProposalsResponse>;
-          if (proposalsData.success && proposalsData.data?.proposals) {
-            setProposals(proposalsData.data.proposals);
-          }
+          // Refresh all data to get updated status
+          await refreshAllData();
           return;
         }
 
@@ -194,10 +391,15 @@ export default function HomePage() {
             `This proposal already has a pending inscription order (Status: ${status.orderStatus}). ` +
               "Would you like to view the existing order instead of creating a new one?",
           );
-          if (!proceed) {
+          if (proceed && status.orderId) {
+            // Resume existing order
+            setExistingOrderId(status.orderId);
+            setSelectedProposal(proposal);
+            setIsInscriptionModalOpen(true);
+            return;
+          } else if (!proceed) {
             return;
           }
-          // Could open existing order modal here instead
         }
 
         if (
@@ -218,16 +420,85 @@ export default function HomePage() {
       // Continue with inscription if status check fails
     }
 
-    // Set the selected proposal and open the inscription modal
+    // Set the selected proposal and open the inscription modal (for new order)
+    setExistingOrderId(undefined);
     setSelectedProposal(proposal);
     setIsInscriptionModalOpen(true);
   };
 
+  const handleResumeOrder = (
+    orderId: string,
+    proposalId: number,
+    proposalName: string,
+    proposalTicker: string,
+    receiveAddress: string,
+  ) => {
+    // Create a minimal proposal object for the modal
+    const proposal: Proposal = {
+      id: proposalId,
+      name: proposalName,
+      ticker: proposalTicker,
+      description: "",
+      imageUrl: "",
+      submittedBy: 0,
+      votesUp: 0,
+      votesDown: 0,
+      totalVotes: 0,
+      status: "active",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setExistingOrderId(orderId);
+    setSelectedProposal(proposal);
+    setIsInscriptionModalOpen(true);
+  };
+
+  const handleProfileSubmit = async (profileData: {
+    username: string;
+    email?: string;
+    twitter?: string;
+    telegram?: string;
+    bio?: string;
+  }) => {
+    try {
+      await updateProfile(profileData);
+      setIsProfileModalOpen(false);
+
+      addNotification({
+        type: "success",
+        title: "Profile Updated! 🎉",
+        message: `Welcome to BitMemes, ${profileData.username}! Your profile has been saved successfully.`,
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      addNotification({
+        type: "error",
+        title: "Profile Update Failed ❌",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to update profile. Please try again.",
+        duration: 5000,
+      });
+    }
+  };
+
   const getFilteredProposals = () => {
-    const sorted = [...proposals];
+    const activeProposals = proposals.filter((p) => p.status === "active");
+    console.log("🛡️ Client-side filtering:", {
+      totalProposals: proposals.length,
+      activeProposals: activeProposals.length,
+      proposalStatuses: proposals.map((p) => ({
+        ticker: p.ticker,
+        status: p.status,
+      })),
+    });
+
     switch (activeTab) {
       case "trending":
-        return sorted.sort((a, b) => {
+        return activeProposals.sort((a, b) => {
           const aScore =
             (a.votesUp - a.votesDown) /
             (Date.now() - new Date(a.createdAt).getTime());
@@ -237,20 +508,32 @@ export default function HomePage() {
           return bScore - aScore;
         });
       case "new":
-        return sorted.sort(
+        return activeProposals.sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
       case "top":
-        return sorted.sort(
+        return activeProposals.sort(
           (a, b) => b.votesUp - b.votesDown - (a.votesUp - a.votesDown),
         );
       default:
-        return sorted;
+        return activeProposals;
     }
   };
 
-  const totalVotes = proposals.reduce((sum, p) => sum + p.totalVotes, 0);
+  const getInscribedProposals = () => {
+    return inscribedProposals.sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
+  };
+
+  const totalVotes = [...proposals, ...inscribedProposals].reduce(
+    (sum, p) => sum + p.totalVotes,
+    0,
+  );
+  const activeProposalsCount = proposals.length;
+  const inscribedProposalsCount = inscribedProposals.length;
 
   if (!mounted) {
     return null;
@@ -289,9 +572,15 @@ export default function HomePage() {
               </div>
               <div className="text-center">
                 <div className="text-lg font-bold text-white">
-                  {proposals.length}
+                  {activeProposalsCount}
                 </div>
-                <div className="text-xs text-gray-400">Proposals</div>
+                <div className="text-xs text-gray-400">Active</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-white">
+                  {inscribedProposalsCount}
+                </div>
+                <div className="text-xs text-gray-400">Inscribed</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-bold text-white">
@@ -301,16 +590,35 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Wallet & Submit Button */}
+            {/* Manual Refresh & Wallet & Submit Button */}
             <div className="flex items-center gap-3">
+              <button
+                onClick={refreshAllData}
+                className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm font-medium text-blue-400 transition-all hover:bg-blue-500/20"
+                title="Refresh proposal data"
+              >
+                🔄 Refresh
+              </button>
               {isConnected ? (
                 <div className="flex items-center gap-3">
                   <div className="hidden text-right sm:block">
-                    <div className="text-xs text-gray-400">Connected</div>
+                    <div className="text-xs text-gray-400">
+                      {userProfile
+                        ? `Hello, ${userProfile.username}`
+                        : "Connected"}
+                    </div>
                     <div className="font-mono text-sm text-white">
                       {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
                     </div>
                   </div>
+                  {!hasCompleteProfile && (
+                    <button
+                      onClick={() => setIsProfileModalOpen(true)}
+                      className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs font-medium text-yellow-400 transition-all hover:bg-yellow-500/20"
+                    >
+                      Complete Profile
+                    </button>
+                  )}
                   <button
                     onClick={disconnect}
                     className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-gray-300 transition-all hover:bg-white/10 hover:text-white"
@@ -455,38 +763,45 @@ export default function HomePage() {
               transition={{ duration: 0.3 }}
               className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
             >
-              {getFilteredProposals().map((proposal, index) => (
-                <motion.div
-                  key={proposal.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <ProposalCard
-                    id={proposal.id}
-                    name={proposal.name}
-                    ticker={proposal.ticker}
-                    description={proposal.description}
-                    imageUrl={proposal.imageUrl}
-                    creator={
-                      proposal.submittedBy
-                        ? `User #${proposal.submittedBy}`
-                        : "Anonymous"
-                    }
-                    votesUp={proposal.votesUp}
-                    votesDown={proposal.votesDown}
-                    totalVotes={proposal.totalVotes}
-                    status={proposal.status}
-                    onVote={handleVote}
-                    onInscribe={handleInscribe}
-                  />
-                </motion.div>
-              ))}
+              {getFilteredProposals()
+                .filter((p) => p.status === "active")
+                .map((proposal, index) => (
+                  <motion.div
+                    key={proposal.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <ProposalCard
+                      id={proposal.id}
+                      name={proposal.name}
+                      ticker={proposal.ticker}
+                      description={proposal.description}
+                      imageUrl={proposal.imageUrl}
+                      creator={
+                        proposal.submitter?.username
+                          ? userProfile &&
+                            proposal.submittedBy === userProfile.id
+                            ? `${proposal.submitter.username} (You)`
+                            : proposal.submitter.username
+                          : proposal.submittedBy
+                            ? `User #${proposal.submittedBy}`
+                            : "Anonymous"
+                      }
+                      votesUp={proposal.votesUp}
+                      votesDown={proposal.votesDown}
+                      totalVotes={proposal.totalVotes}
+                      status={proposal.status}
+                      onVote={handleVote}
+                      onInscribe={handleInscribe}
+                    />
+                  </motion.div>
+                ))}
             </motion.div>
           </AnimatePresence>
 
           {/* Empty State */}
-          {proposals.length === 0 && (
+          {getFilteredProposals().length === 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -494,7 +809,7 @@ export default function HomePage() {
             >
               <div className="mb-4 text-6xl">🎭</div>
               <h3 className="mb-2 text-xl font-semibold text-white">
-                No memes yet!
+                No active memes yet!
               </h3>
               <p className="mb-6 text-gray-400">
                 Be the first to submit a meme proposal
@@ -516,6 +831,62 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Inscribed Proposals Section */}
+      {getInscribedProposals().length > 0 && (
+        <section className="px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            {/* Section Header */}
+            <div className="mb-12 text-center">
+              <h3 className="text-3xl font-bold text-white">
+                🏆 Bitcoin Inscriptions
+              </h3>
+              <p className="mt-4 text-gray-400">
+                Memes that made it! These proposals have been permanently
+                inscribed on Bitcoin.
+              </p>
+            </div>
+
+            {/* Inscribed Proposals Grid */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {getInscribedProposals()
+                .filter((p) => p.status === "inscribed")
+                .map((proposal, index) => (
+                  <motion.div
+                    key={`inscribed-${proposal.id}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <ProposalCard
+                      id={proposal.id}
+                      name={proposal.name}
+                      ticker={proposal.ticker}
+                      description={proposal.description}
+                      imageUrl={proposal.imageUrl}
+                      creator={
+                        proposal.submitter?.username
+                          ? userProfile &&
+                            proposal.submittedBy === userProfile.id
+                            ? `${proposal.submitter.username} (You)`
+                            : proposal.submitter.username
+                          : proposal.submittedBy
+                            ? `User #${proposal.submittedBy}`
+                            : "Anonymous"
+                      }
+                      votesUp={proposal.votesUp}
+                      votesDown={proposal.votesDown}
+                      totalVotes={proposal.totalVotes}
+                      status={proposal.status}
+                      onVote={handleVote}
+                      onInscribe={handleInscribe}
+                    />
+                  </motion.div>
+                ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Modals */}
       <SubmitProposalModal
         isOpen={isModalOpen}
@@ -534,13 +905,35 @@ export default function HomePage() {
           onClose={() => {
             setIsInscriptionModalOpen(false);
             setSelectedProposal(null);
+            setExistingOrderId(undefined);
           }}
           proposalId={selectedProposal.id}
           proposalName={selectedProposal.name}
           proposalTicker={selectedProposal.ticker}
           receiveAddress={walletAddress}
+          existingOrderId={existingOrderId}
         />
       )}
+
+      {/* Active Orders Widget */}
+      {isConnected && <ActiveOrdersWidget onResumeOrder={handleResumeOrder} />}
+
+      {/* User Profile Modal */}
+      {walletAddress && (
+        <UserProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          onSubmit={handleProfileSubmit}
+          walletAddress={walletAddress}
+          isRequired={!hasCompleteProfile}
+        />
+      )}
+
+      {/* Order Notifications */}
+      <OrderNotification
+        notifications={notifications}
+        onRemove={removeNotification}
+      />
     </div>
   );
 }

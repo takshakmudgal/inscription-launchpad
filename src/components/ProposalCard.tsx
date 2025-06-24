@@ -134,78 +134,121 @@ export function ProposalCard({
         {/* Description */}
         <p className="line-clamp-2 text-sm text-gray-300">{description}</p>
 
-        {/* Vote Progress */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-400">Community Vote</span>
-            <span className="font-semibold text-white">
-              {totalVotes === 1
-                ? "1 vote"
-                : `${totalVotes.toLocaleString()} votes`}
-            </span>
-          </div>
+        {/* Vote Progress - Only show for active proposals */}
+        {status === "active" && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-400">Community Vote</span>
+              <span className="font-semibold text-white">
+                {totalVotes === 1
+                  ? "1 vote"
+                  : `${totalVotes.toLocaleString()} votes`}
+              </span>
+            </div>
 
-          {/* Progress Bar */}
-          <div className="h-2 overflow-hidden rounded-full bg-gray-800">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${votePercentage}%` }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="h-full bg-gradient-to-r from-green-500 to-emerald-400"
-            />
-          </div>
+            {/* Progress Bar */}
+            <div className="h-2 overflow-hidden rounded-full bg-gray-800">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${votePercentage}%` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="h-full bg-gradient-to-r from-green-500 to-emerald-400"
+              />
+            </div>
 
-          {/* Vote counts */}
-          <div className="flex justify-between text-xs text-gray-400">
-            <span>👍 {votesUp.toLocaleString()}</span>
-            <span>👎 {votesDown.toLocaleString()}</span>
+            {/* Vote counts */}
+            <div className="flex justify-between text-xs text-gray-400">
+              <span>👍 {votesUp.toLocaleString()}</span>
+              <span>👎 {votesDown.toLocaleString()}</span>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Inscribed Proposal Info - Show final stats for inscribed proposals */}
+        {status === "inscribed" && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-400">Final Results</span>
+              <span className="font-semibold text-white">
+                {totalVotes === 1
+                  ? "1 vote"
+                  : `${totalVotes.toLocaleString()} votes`}
+              </span>
+            </div>
+
+            {/* Final Progress Bar */}
+            <div className="h-2 overflow-hidden rounded-full bg-gray-800">
+              <div
+                style={{ width: `${votePercentage}%` }}
+                className="h-full bg-gradient-to-r from-green-500 to-emerald-400"
+              />
+            </div>
+
+            {/* Final Vote counts */}
+            <div className="flex justify-between text-xs text-gray-400">
+              <span>👍 {votesUp.toLocaleString()}</span>
+              <span>👎 {votesDown.toLocaleString()}</span>
+            </div>
+
+            {/* Inscription info */}
+            <div className="mt-3 rounded-lg border border-green-500/20 bg-green-500/10 p-3">
+              <div className="text-xs text-green-400">
+                ✅ Permanently inscribed on Bitcoin blockchain
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex gap-2 pt-2">
-          {/* Vote Buttons */}
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log("🚨 BUTTON CLICKED - THIS SHOULD ALWAYS WORK!");
-              handleVote("up");
-            }}
-            disabled={isVoting !== null}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-green-500/30 bg-green-500/20 px-4 py-3 text-sm font-semibold text-green-400 transition-all hover:scale-105 hover:bg-green-500/30 disabled:cursor-not-allowed disabled:opacity-50"
-            style={{ pointerEvents: "auto", zIndex: 10 }}
-          >
-            {isVoting === "up" ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-400/30 border-t-green-400" />
-            ) : (
-              <>
-                <span>👍</span>
-                Vote
-              </>
-            )}
-          </button>
+          {/* Vote Buttons - Only show for active proposals */}
+          {status === "active" && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("🚨 BUTTON CLICKED - THIS SHOULD ALWAYS WORK!");
+                  handleVote("up");
+                }}
+                disabled={isVoting !== null}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-green-500/30 bg-green-500/20 px-4 py-3 text-sm font-semibold text-green-400 transition-all hover:scale-105 hover:bg-green-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ pointerEvents: "auto", zIndex: 10 }}
+              >
+                {isVoting === "up" ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-400/30 border-t-green-400" />
+                ) : (
+                  <>
+                    <span>👍</span>
+                    Vote
+                  </>
+                )}
+              </button>
 
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log("🚨 DOWN VOTE CLICKED - THIS SHOULD ALWAYS WORK!");
-              handleVote("down");
-            }}
-            disabled={isVoting !== null}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/20 px-4 py-3 text-sm font-semibold text-red-400 transition-all hover:scale-105 hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
-            style={{ pointerEvents: "auto", zIndex: 10 }}
-          >
-            {isVoting === "down" ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-400/30 border-t-red-400" />
-            ) : (
-              <>
-                <span>👎</span>
-                Vote
-              </>
-            )}
-          </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log(
+                    "🚨 DOWN VOTE CLICKED - THIS SHOULD ALWAYS WORK!",
+                  );
+                  handleVote("down");
+                }}
+                disabled={isVoting !== null}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/20 px-4 py-3 text-sm font-semibold text-red-400 transition-all hover:scale-105 hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ pointerEvents: "auto", zIndex: 10 }}
+              >
+                {isVoting === "down" ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-400/30 border-t-red-400" />
+                ) : (
+                  <>
+                    <span>👎</span>
+                    Vote
+                  </>
+                )}
+              </button>
+            </>
+          )}
 
           {/* Inscribe Button */}
           {status === "active" ? (
@@ -225,10 +268,10 @@ export function ProposalCard({
           ) : status === "inscribed" ? (
             <button
               disabled
-              className="flex cursor-default items-center justify-center gap-2 rounded-xl border border-green-500/30 bg-green-500/20 px-4 py-3 text-sm font-semibold text-green-400"
+              className="flex w-full cursor-default items-center justify-center gap-2 rounded-xl border border-green-500/30 bg-green-500/20 px-4 py-3 text-sm font-semibold text-green-400"
             >
-              <span>✅</span>
-              Inscribed
+              <span>🏆</span>
+              Permanently Inscribed
             </button>
           ) : (
             <button

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { db } from "~/server/db";
-import { proposals, users } from "~/server/db/schema";
+import { proposals, users, inscriptions } from "~/server/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { ApiResponse, Proposal } from "~/types";
@@ -294,6 +294,30 @@ export async function POST(
 
     const created = newProposal[0]!;
 
+    // Get submitter details if available
+    let submitterDetails;
+    if (userId) {
+      const submitter = await db
+        .select({
+          id: users.id,
+          walletAddress: users.walletAddress,
+          username: users.username,
+        })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (submitter.length > 0) {
+        submitterDetails = {
+          id: submitter[0]!.id,
+          walletAddress: submitter[0]!.walletAddress!,
+          username: submitter[0]!.username ?? undefined,
+          createdAt: "",
+          updatedAt: "",
+        };
+      }
+    }
+
     const transformedProposal: Proposal = {
       id: created.id,
       name: created.name,
@@ -305,6 +329,7 @@ export async function POST(
       imageUrl: created.imageUrl,
       bannerUrl: created.bannerUrl ?? undefined,
       submittedBy: created.submittedBy ?? undefined,
+      submitter: submitterDetails,
       votesUp: created.votesUp,
       votesDown: created.votesDown,
       totalVotes: created.totalVotes,
@@ -334,6 +359,64 @@ export async function POST(
 
     return NextResponse.json(
       { success: false, error: "Failed to create proposal" },
+      { status: 500 },
+    );
+  }
+}
+
+// PATCH /api/proposals - Update proposal status
+export async function PATCH(
+  request: NextRequest,
+): Promise<NextResponse<ApiResponse<{ success: boolean }>>> {
+  try {
+    const body = (await request.json()) as {
+      orderId?: string;
+      action?: string;
+    };
+
+    if (body.action === "mark_inscribed" && body.orderId) {
+      // Find the inscription with this order ID
+      const inscription = await db
+        .select()
+        .from(inscriptions)
+        .where(eq(inscriptions.unisatOrderId, body.orderId))
+        .limit(1);
+
+      if (inscription.length === 0) {
+        return NextResponse.json(
+          { success: false, error: "Inscription not found for this order" },
+          { status: 404 },
+        );
+      }
+
+      const proposalId = inscription[0]!.proposalId;
+
+      // Update the proposal status to inscribed
+      await db
+        .update(proposals)
+        .set({
+          status: "inscribed",
+          updatedAt: new Date(),
+        })
+        .where(eq(proposals.id, proposalId));
+
+      console.log(`✅ Proposal ${proposalId} marked as inscribed via API`);
+
+      return NextResponse.json({
+        success: true,
+        data: { success: true },
+        message: "Proposal status updated successfully",
+      });
+    }
+
+    return NextResponse.json(
+      { success: false, error: "Invalid action" },
+      { status: 400 },
+    );
+  } catch (error) {
+    console.error("Error updating proposal:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to update proposal" },
       { status: 500 },
     );
   }

@@ -34,8 +34,8 @@ class UnisatMonitor {
    * Start the cron job to monitor UniSat orders
    */
   start() {
-    // Check every 5 minutes for order updates
-    cron.schedule("*/5 * * * *", () => {
+    // Check every minute for order updates
+    cron.schedule("* * * * *", () => {
       void (async () => {
         if (this.isRunning) {
           console.log("⏳ UniSat monitor already running, skipping...");
@@ -53,7 +53,7 @@ class UnisatMonitor {
       })();
     });
 
-    console.log("⏰ UniSat monitor cron job started (every 5 minutes)");
+    console.log("⏰ UniSat monitor cron job started (every minute)");
   }
 
   /**

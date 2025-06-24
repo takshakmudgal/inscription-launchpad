@@ -26,8 +26,12 @@ export const users = createTable(
   {
     id: integer().primaryKey().generatedByDefaultAsIdentity(),
     walletAddress: varchar("wallet_address", { length: 62 }), // Bitcoin addresses can be up to 62 chars
-    twitterId: varchar("twitter_id", { length: 50 }),
+    twitterId: varchar("twitter_id", { length: 50 }), // Legacy field for Twitter OAuth
     username: varchar("username", { length: 50 }),
+    email: varchar("email", { length: 255 }),
+    twitter: varchar("twitter", { length: 50 }), // Twitter handle
+    telegram: varchar("telegram", { length: 50 }), // Telegram username
+    bio: text("bio"), // User bio/description
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -38,6 +42,8 @@ export const users = createTable(
   (t) => [
     index("user_wallet_idx").on(t.walletAddress),
     index("user_twitter_idx").on(t.twitterId),
+    index("user_username_idx").on(t.username),
+    index("user_email_idx").on(t.email),
   ],
 );
 

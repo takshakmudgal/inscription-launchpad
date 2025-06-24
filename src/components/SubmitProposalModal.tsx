@@ -15,6 +15,14 @@ interface SubmitProposalModalProps {
   }) => void;
 }
 
+interface FormErrors {
+  name?: string;
+  ticker?: string;
+  description?: string;
+  imageUrl?: string;
+  submit?: string;
+}
+
 export function SubmitProposalModal({
   isOpen,
   onClose,
@@ -28,7 +36,7 @@ export function SubmitProposalModal({
     creator: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +45,57 @@ export function SubmitProposalModal({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Auto-format ticker to uppercase
+    const finalValue = name === "ticker" ? value.toUpperCase() : value;
+
+    setFormData((prev) => ({ ...prev, [name]: finalValue }));
+
+    // Clear specific field error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    // Name validation
+    if (!formData.name.trim()) {
+      newErrors.name = "Meme name is required";
+    } else if (formData.name.length < 2) {
+      newErrors.name = "Name must be at least 2 characters";
+    } else if (formData.name.length > 50) {
+      newErrors.name = "Name must be less than 50 characters";
+    }
+
+    // Ticker validation
+    if (!formData.ticker.trim()) {
+      newErrors.ticker = "Ticker is required";
+    } else if (formData.ticker.length < 2) {
+      newErrors.ticker = "Ticker must be at least 2 characters";
+    } else if (formData.ticker.length > 10) {
+      newErrors.ticker = "Ticker must be 10 characters or less";
+    } else if (!/^[A-Z0-9]+$/.test(formData.ticker)) {
+      newErrors.ticker = "Ticker can only contain letters and numbers";
+    }
+
+    // Description validation
+    if (!formData.description.trim()) {
+      newErrors.description = "Description is required";
+    } else if (formData.description.length < 10) {
+      newErrors.description = "Description must be at least 10 characters";
+    } else if (formData.description.length > 280) {
+      newErrors.description = "Description must be less than 280 characters";
+    }
+
+    // Image validation
+    if (!formData.imageUrl && !imageFile) {
+      newErrors.imageUrl = "Meme image is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,18 +104,24 @@ export function SubmitProposalModal({
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      setError("Please select a valid image file");
+      setErrors((prev) => ({
+        ...prev,
+        imageUrl: "Please select a valid image file",
+      }));
       return;
     }
 
     // Validate file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
-      setError("Image file size must be less than 5MB");
+      setErrors((prev) => ({
+        ...prev,
+        imageUrl: "Image file size must be less than 5MB",
+      }));
       return;
     }
 
     setImageFile(file);
-    setError(null);
+    setErrors((prev) => ({ ...prev, imageUrl: undefined }));
 
     // Create preview URL
     const reader = new FileReader();
@@ -77,6 +141,7 @@ export function SubmitProposalModal({
     setImageFile(null);
     setImagePreview(null);
     setFormData((prev) => ({ ...prev, imageUrl: "" }));
+    setErrors((prev) => ({ ...prev, imageUrl: undefined }));
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -86,27 +151,15 @@ export function SubmitProposalModal({
     e.preventDefault();
     if (isSubmitting) return;
 
-    // Basic validation
-    if (
-      !formData.name ||
-      !formData.ticker ||
-      !formData.description ||
-      !formData.creator
-    ) {
-      setError("Please fill in all required fields");
-      return;
-    }
-
-    if (formData.ticker.length > 10) {
-      setError("Ticker must be 10 characters or less");
+    if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
-    setError(null);
+    setErrors({});
 
     try {
-      onSubmit(formData);
+      await onSubmit(formData);
       // Reset form
       setFormData({
         name: "",
@@ -119,7 +172,7 @@ export function SubmitProposalModal({
       onClose();
     } catch (error) {
       console.error("Error submitting proposal:", error);
-      setError("Failed to submit proposal. Please try again.");
+      setErrors({ submit: "Failed to submit proposal. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -180,7 +233,7 @@ export function SubmitProposalModal({
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Meme Name *
+                  Meme Name <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -188,13 +241,24 @@ export function SubmitProposalModal({
                   value={formData.name}
                   onChange={handleInputChange}
                   placeholder="e.g., Doge Rocket"
-                  className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-white placeholder-gray-500 ring-1 ring-white/10 transition-all focus:border-white/30 focus:ring-white/20 focus:outline-none"
+                  maxLength={50}
+                  className={`w-full rounded-xl border bg-white/5 px-4 py-3 text-white placeholder-gray-500 ring-1 transition-all focus:outline-none ${
+                    errors.name
+                      ? "border-red-500/50 ring-red-500/20 focus:border-red-500 focus:ring-red-500/30"
+                      : "border-white/20 ring-white/10 focus:border-white/30 focus:ring-white/20"
+                  }`}
                   required
                 />
+                {errors.name && (
+                  <p className="mt-1 text-sm text-red-400">{errors.name}</p>
+                )}
+                <div className="mt-1 text-xs text-gray-500">
+                  {formData.name.length}/50 characters
+                </div>
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Ticker *
+                  Ticker <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -203,35 +267,26 @@ export function SubmitProposalModal({
                   onChange={handleInputChange}
                   placeholder="e.g., DGRKT"
                   maxLength={10}
-                  className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-3 font-mono text-white uppercase placeholder-gray-500 ring-1 ring-white/10 transition-all focus:border-white/30 focus:ring-white/20 focus:outline-none"
+                  className={`w-full rounded-xl border bg-white/5 px-4 py-3 font-mono text-white uppercase placeholder-gray-500 ring-1 transition-all focus:outline-none ${
+                    errors.ticker
+                      ? "border-red-500/50 ring-red-500/20 focus:border-red-500 focus:ring-red-500/30"
+                      : "border-white/20 ring-white/10 focus:border-white/30 focus:ring-white/20"
+                  }`}
                   required
                 />
+                {errors.ticker && (
+                  <p className="mt-1 text-sm text-red-400">{errors.ticker}</p>
+                )}
                 <div className="mt-1 text-xs text-gray-500">
                   {formData.ticker.length}/10 characters
                 </div>
               </div>
             </div>
 
-            {/* Creator */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-300">
-                Creator Name *
-              </label>
-              <input
-                type="text"
-                name="creator"
-                value={formData.creator}
-                onChange={handleInputChange}
-                placeholder="e.g., SatoshiMemes"
-                className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-white placeholder-gray-500 ring-1 ring-white/10 transition-all focus:border-white/30 focus:ring-white/20 focus:outline-none"
-                required
-              />
-            </div>
-
             {/* Description */}
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
-                Description *
+                Description <span className="text-red-400">*</span>
               </label>
               <textarea
                 name="description"
@@ -239,15 +294,28 @@ export function SubmitProposalModal({
                 onChange={handleInputChange}
                 placeholder="Describe your meme coin... What makes it special? Why should the community vote for it?"
                 rows={4}
-                className="w-full resize-none rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-white placeholder-gray-500 ring-1 ring-white/10 transition-all focus:border-white/30 focus:ring-white/20 focus:outline-none"
+                maxLength={280}
+                className={`w-full resize-none rounded-xl border bg-white/5 px-4 py-3 text-white placeholder-gray-500 ring-1 transition-all focus:outline-none ${
+                  errors.description
+                    ? "border-red-500/50 ring-red-500/20 focus:border-red-500 focus:ring-red-500/30"
+                    : "border-white/20 ring-white/10 focus:border-white/30 focus:ring-white/20"
+                }`}
                 required
               />
+              {errors.description && (
+                <p className="mt-1 text-sm text-red-400">
+                  {errors.description}
+                </p>
+              )}
+              <div className="mt-1 text-xs text-gray-500">
+                {formData.description.length}/280 characters
+              </div>
             </div>
 
             {/* Image Upload */}
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
-                Meme Image
+                Meme Image <span className="text-red-400">*</span>
               </label>
 
               {!imagePreview ? (
@@ -262,7 +330,11 @@ export function SubmitProposalModal({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full rounded-xl border-2 border-dashed border-white/20 bg-white/5 px-6 py-8 text-center transition-all hover:border-white/30 hover:bg-white/10"
+                    className={`w-full rounded-xl border-2 border-dashed bg-white/5 px-6 py-8 text-center transition-all ${
+                      errors.imageUrl
+                        ? "border-red-500/50 hover:border-red-500/70"
+                        : "border-white/20 hover:border-white/30 hover:bg-white/10"
+                    }`}
                   >
                     <div className="flex flex-col items-center gap-3">
                       <div className="rounded-full bg-white/10 p-3">
@@ -291,65 +363,57 @@ export function SubmitProposalModal({
                         <p className="font-medium text-white">
                           Click to upload image
                         </p>
-                        <p className="mt-1 text-sm text-gray-400">
+                        <p className="text-sm text-gray-400">
                           PNG, JPG, GIF up to 5MB
                         </p>
                       </div>
                     </div>
                   </button>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-white/20 bg-white/5 p-4">
-                  <div className="mb-3 flex items-start justify-between">
-                    <label className="text-sm font-medium text-gray-300">
-                      Image Preview
-                    </label>
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      className="rounded-full bg-red-500/20 p-1 text-red-400 transition-all hover:bg-red-500/30"
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                      </svg>
-                    </button>
-                  </div>
-                  <div className="relative aspect-square w-full max-w-xs overflow-hidden rounded-lg">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  {imageFile && (
-                    <p className="mt-2 text-xs text-gray-400">
-                      {imageFile.name} •{" "}
-                      {(imageFile.size / 1024 / 1024).toFixed(2)}MB
+                  {errors.imageUrl && (
+                    <p className="mt-2 text-sm text-red-400">
+                      {errors.imageUrl}
                     </p>
                   )}
                 </div>
+              ) : (
+                <div className="relative">
+                  <div className="overflow-hidden rounded-xl border border-white/20">
+                    <img
+                      src={imagePreview}
+                      alt="Meme preview"
+                      className="h-48 w-full object-cover"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white shadow-lg transition-all hover:bg-red-600"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                    </svg>
+                  </button>
+                  <p className="mt-2 text-sm text-gray-400">
+                    Upload a meme image for your proposal. This will be
+                    displayed to voters.
+                  </p>
+                </div>
               )}
-
-              <p className="mt-2 text-xs text-gray-500">
-                Upload a meme image for your proposal. This will be displayed to
-                voters.
-              </p>
             </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-400">
-                {error}
+            {/* Submit Error */}
+            {errors.submit && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+                <p className="text-sm text-red-400">{errors.submit}</p>
               </div>
             )}
 
-            {/* Submit Button */}
+            {/* Action Buttons */}
             <div className="flex gap-4 pt-4">
               <button
                 type="button"
@@ -361,7 +425,7 @@ export function SubmitProposalModal({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 rounded-xl bg-gradient-to-r from-zinc-700 via-gray-600 to-zinc-700 px-6 py-3 font-semibold text-white ring-1 ring-white/20 transition-all hover:from-zinc-600 hover:via-gray-500 hover:to-zinc-600 hover:ring-white/30 disabled:from-gray-800 disabled:via-gray-700 disabled:to-gray-800 disabled:text-gray-500 disabled:ring-white/10"
+                className="flex-1 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-semibold text-white transition-all hover:from-purple-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
