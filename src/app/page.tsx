@@ -409,9 +409,13 @@ export default function HomePage() {
   };
 
   const getFilteredProposals = () => {
-    const activeProposals = proposals.filter(
-      (p) => p.status === "active" || p.status === "leader",
-    );
+    // Filter and deduplicate active proposals
+    const activeProposals = proposals
+      .filter((p) => p.status === "active" || p.status === "leader")
+      .filter(
+        (proposal, index, array) =>
+          array.findIndex((p) => p.id === proposal.id) === index,
+      );
 
     switch (activeTab) {
       case "trending":
@@ -436,6 +440,10 @@ export default function HomePage() {
   const getProcessingProposals = () => {
     return proposals
       .filter((p) => p.status === "inscribing")
+      .filter(
+        (proposal, index, array) =>
+          array.findIndex((p) => p.id === proposal.id) === index,
+      )
       .sort(
         (a, b) =>
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
@@ -443,10 +451,15 @@ export default function HomePage() {
   };
 
   const getInscribedProposals = () => {
-    return inscribedProposals.sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    );
+    return inscribedProposals
+      .filter(
+        (proposal, index, array) =>
+          array.findIndex((p) => p.id === proposal.id) === index,
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      );
   };
 
   const totalVotes = [...proposals, ...inscribedProposals].reduce(
@@ -773,7 +786,7 @@ export default function HomePage() {
             >
               {getFilteredProposals().map((proposal, index) => (
                 <motion.div
-                  key={proposal.id}
+                  key={`active-${proposal.id}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
