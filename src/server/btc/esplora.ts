@@ -29,19 +29,118 @@ interface EsploraAddressStats {
   };
 }
 
+interface TokenResponse {
+  access_token: string;
+  expires_in: number;
+  refresh_expires_in: number;
+  token_type: string;
+  id_token: string;
+  "not-before-policy": number;
+  scope: string;
+}
+
 export class EsploraService {
-  private readonly apiUrl: string;
+  private readonly enterpriseApiUrl: string;
+  private readonly tokenUrl =
+    "https://login.blockstream.com/realms/blockstream-public/protocol/openid-connect/token";
+  private readonly clientId: string;
+  private readonly clientSecret: string;
   private readonly axiosInstance;
 
+  private accessToken: string | null = null;
+  private tokenExpiresAt: number = 0;
+
   constructor() {
-    this.apiUrl = env.ESPLORA_API_URL;
+    // Use enterprise API endpoint based on network
+    this.enterpriseApiUrl =
+      env.BITCOIN_NETWORK === "mainnet"
+        ? "https://enterprise.blockstream.info/api"
+        : "https://enterprise.blockstream.info/testnet/api";
+
+    this.clientId = env.ESPLORA_CLIENT_ID;
+    this.clientSecret = env.ESPLORA_CLIENT_SECRET;
+
     this.axiosInstance = axios.create({
-      baseURL: this.apiUrl,
+      baseURL: this.enterpriseApiUrl,
       timeout: 10000,
       headers: {
         "Content-Type": "application/json",
       },
     });
+
+    // Add request interceptor to handle authentication
+    this.axiosInstance.interceptors.request.use(async (config) => {
+      await this.ensureValidToken();
+      if (this.accessToken) {
+        config.headers.Authorization = `Bearer ${this.accessToken}`;
+      }
+      return config;
+    });
+
+    // Add response interceptor to handle token expiration
+    this.axiosInstance.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401) {
+          // Token might be expired, try to refresh
+          this.accessToken = null;
+          this.tokenExpiresAt = 0;
+
+          // Retry the request
+          const originalRequest = error.config;
+          if (!originalRequest._retry) {
+            originalRequest._retry = true;
+            await this.ensureValidToken();
+            if (this.accessToken) {
+              originalRequest.headers.Authorization = `Bearer ${this.accessToken}`;
+            }
+            return this.axiosInstance(originalRequest);
+          }
+        }
+        return Promise.reject(error);
+      },
+    );
+  }
+
+  /**
+   * Ensure we have a valid access token
+   */
+  private async ensureValidToken(): Promise<void> {
+    const now = Date.now();
+
+    // Check if token is expired or will expire in the next 30 seconds
+    if (!this.accessToken || now >= this.tokenExpiresAt - 30000) {
+      await this.refreshAccessToken();
+    }
+  }
+
+  /**
+   * Get a new access token
+   */
+  private async refreshAccessToken(): Promise<void> {
+    try {
+      const params = new URLSearchParams();
+      params.append("client_id", this.clientId);
+      params.append("client_secret", this.clientSecret);
+      params.append("grant_type", "client_credentials");
+      params.append("scope", "openid");
+
+      const response = await axios.post<TokenResponse>(this.tokenUrl, params, {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        timeout: 10000,
+      });
+
+      this.accessToken = response.data.access_token;
+      // Set expiration time (expires_in is in seconds, subtract 30 seconds for safety)
+      this.tokenExpiresAt = Date.now() + (response.data.expires_in - 30) * 1000;
+
+      console.log("Successfully refreshed Esplora access token");
+    } catch (error) {
+      console.error("Error refreshing Esplora access token:", error);
+      throw new Error("Failed to get Esplora access token");
+    }
   }
 
   /**

@@ -42,12 +42,36 @@ export const bitcoinWallet = {
 
   async getUTXOs(): Promise<UTXO[]> {
     const wallet = await this.getWallet();
-    const esploraUrl = env.ESPLORA_API_URL;
+
+    // Import EsploraService for authenticated API calls
+    const { EsploraService } = await import("~/server/btc/esplora");
+    const esploraService = new EsploraService();
 
     try {
+      // Use enterprise API endpoint directly
+      const esploraUrl =
+        env.BITCOIN_NETWORK === "mainnet"
+          ? "https://enterprise.blockstream.info/api"
+          : "https://enterprise.blockstream.info/testnet/api";
+
+      // Ensure we have a valid token first
+      await (esploraService as any).ensureValidToken();
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
       const response = await fetch(
         `${esploraUrl}/address/${wallet.address}/utxo`,
+        {
+          headers: {
+            Authorization: `Bearer ${(esploraService as any).accessToken}`,
+            "Content-Type": "application/json",
+          },
+          signal: controller.signal,
+        },
       );
+
+      clearTimeout(timeoutId);
       if (!response.ok) {
         throw new Error(`Failed to fetch UTXOs: ${response.statusText}`);
       }
@@ -65,7 +89,19 @@ export const bitcoinWallet = {
       for (const utxo of utxos) {
         if (utxo.status.confirmed) {
           // Get scriptPubKey from transaction output
-          const txResponse = await fetch(`${esploraUrl}/tx/${utxo.txid}`);
+          const txController = new AbortController();
+          const txTimeoutId = setTimeout(() => txController.abort(), 30000);
+
+          const txResponse = await fetch(`${esploraUrl}/tx/${utxo.txid}`, {
+            headers: {
+              Authorization: `Bearer ${(esploraService as any).accessToken}`,
+              "Content-Type": "application/json",
+            },
+            signal: txController.signal,
+          });
+
+          clearTimeout(txTimeoutId);
+
           if (txResponse.ok) {
             const txData = (await txResponse.json()) as {
               vout: Array<{ scriptpubkey: string }>;
@@ -213,9 +249,33 @@ export const bitcoinWallet = {
 
     console.log(`⏳ Monitoring transaction confirmation: ${txid}`);
 
+    // Import EsploraService for authenticated API calls
+    const { EsploraService } = await import("~/server/btc/esplora");
+    const esploraService = new EsploraService();
+
     while (Date.now() - startTime < maxWaitTime) {
       try {
-        const response = await fetch(`${env.ESPLORA_API_URL}/tx/${txid}`);
+        // Ensure we have a valid token
+        await (esploraService as any).ensureValidToken();
+
+        const esploraUrl =
+          env.BITCOIN_NETWORK === "mainnet"
+            ? "https://enterprise.blockstream.info/api"
+            : "https://enterprise.blockstream.info/testnet/api";
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        const response = await fetch(`${esploraUrl}/tx/${txid}`, {
+          headers: {
+            Authorization: `Bearer ${(esploraService as any).accessToken}`,
+            "Content-Type": "application/json",
+          },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
         if (response.ok) {
           const txData = (await response.json()) as {
             status: { confirmed: boolean };
@@ -270,16 +330,33 @@ export const bitcoinWallet = {
   },
 
   async broadcastTransaction(rawTx: string): Promise<void> {
-    const esploraUrl = env.ESPLORA_API_URL;
+    // Import EsploraService for authenticated API calls
+    const { EsploraService } = await import("~/server/btc/esplora");
+    const esploraService = new EsploraService();
 
     try {
+      // Ensure we have a valid token
+      await (esploraService as any).ensureValidToken();
+
+      const esploraUrl =
+        env.BITCOIN_NETWORK === "mainnet"
+          ? "https://enterprise.blockstream.info/api"
+          : "https://enterprise.blockstream.info/testnet/api";
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
       const response = await fetch(`${esploraUrl}/tx`, {
         method: "POST",
         headers: {
           "Content-Type": "text/plain",
+          Authorization: `Bearer ${(esploraService as any).accessToken}`,
         },
         body: rawTx,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const error = await response.text();

@@ -25,6 +25,8 @@ export const env = createEnv({
     PLATFORM_WALLET_PRIVATE_KEY_WIF: z.string().optional(),
     PLATFORM_WALLET_PRIVATE_KEY_HEX: z.string().optional(),
     PLATFORM_WALLET_ADDRESS: z.string().optional(),
+    ESPLORA_CLIENT_ID: z.string(),
+    ESPLORA_CLIENT_SECRET: z.string(),
   },
 
   /**
@@ -64,6 +66,8 @@ export const env = createEnv({
     PLATFORM_WALLET_PRIVATE_KEY_HEX:
       process.env.PLATFORM_WALLET_PRIVATE_KEY_HEX,
     PLATFORM_WALLET_ADDRESS: process.env.PLATFORM_WALLET_ADDRESS,
+    ESPLORA_CLIENT_ID: process.env.ESPLORA_CLIENT_ID,
+    ESPLORA_CLIENT_SECRET: process.env.ESPLORA_CLIENT_SECRET,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
