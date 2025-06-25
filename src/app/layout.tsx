@@ -6,9 +6,8 @@ const inter = Inter({ subsets: ["latin"] });
 import { type Metadata } from "next";
 import { WalletProvider } from "~/components/providers";
 
-// Import background jobs to ensure they start
-import "~/server/jobs/unisat-monitor";
-import "~/server/jobs/inscription-engine";
+// Import background services initialization
+import "~/server/init";
 
 export const metadata: Metadata = {
   title: "BitMemes - Bitcoin Meme Launchpad",

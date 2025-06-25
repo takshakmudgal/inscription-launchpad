@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { db } from "~/server/db";
 import { proposals, users } from "~/server/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import type { ApiResponse, LeaderboardEntry } from "~/types";
 
 // GET /api/leaderboard - Get top proposals ranked by votes
@@ -31,6 +31,10 @@ export async function GET(
         votesDown: proposals.votesDown,
         totalVotes: proposals.totalVotes,
         status: proposals.status,
+        // New automatic inscription timing fields
+        firstTimeAsLeader: proposals.firstTimeAsLeader,
+        leaderboardMinBlocks: proposals.leaderboardMinBlocks,
+        expirationBlock: proposals.expirationBlock,
         createdAt: proposals.createdAt,
         updatedAt: proposals.updatedAt,
         submitterWallet: users.walletAddress,
@@ -41,17 +45,19 @@ export async function GET(
 
     // Execute query with conditional filtering
     const results =
-      status !== "all"
+      status === "active"
         ? await baseQuery
             .where(
-              eq(
-                proposals.status,
-                status as "active" | "inscribed" | "rejected",
-              ),
+              sql`${proposals.status} IN ('active', 'leader')`, // Active leaderboard excludes expired proposals
             )
             .orderBy(desc(proposals.totalVotes))
             .limit(limit)
-        : await baseQuery.orderBy(desc(proposals.totalVotes)).limit(limit);
+        : status !== "all"
+          ? await baseQuery
+              .where(eq(proposals.status, status as "inscribed" | "rejected"))
+              .orderBy(desc(proposals.totalVotes))
+              .limit(limit)
+          : await baseQuery.orderBy(desc(proposals.totalVotes)).limit(limit);
 
     // Transform results to leaderboard entries
     const leaderboard: LeaderboardEntry[] = results.map((row, index) => {
@@ -73,6 +79,10 @@ export async function GET(
         votesDown: row.votesDown,
         totalVotes: row.totalVotes,
         status: row.status,
+        // New automatic inscription timing fields
+        firstTimeAsLeader: row.firstTimeAsLeader?.toISOString(),
+        leaderboardMinBlocks: row.leaderboardMinBlocks,
+        expirationBlock: row.expirationBlock ?? undefined,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
         submitter: row.submitterWallet

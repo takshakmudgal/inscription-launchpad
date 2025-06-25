@@ -62,59 +62,15 @@ export async function POST(
       );
     }
 
-    // Use current block height if not provided
-    const currentBlockHeight = blockHeight ?? 850000; // Default for testnet
-
-    // Transform proposal data to match expected type
-    const proposalForInscription = {
-      ...proposalData,
-      website: proposalData.website ?? undefined,
-      twitter: proposalData.twitter ?? undefined,
-      telegram: proposalData.telegram ?? undefined,
-      bannerUrl: proposalData.bannerUrl ?? undefined,
-      submittedBy: proposalData.submittedBy ?? undefined,
-      createdAt: proposalData.createdAt.toISOString(),
-      updatedAt: proposalData.updatedAt.toISOString(),
-    };
-
-    // Create UniSat order
-    const order = await unisatService.createInscriptionOrder(
-      proposalForInscription,
-      currentBlockHeight,
-      receiveAddress,
-    );
-
-    // Store inscription record in database
-    await db.insert(inscriptions).values({
-      proposalId: proposalData.id,
-      blockHeight: currentBlockHeight,
-      blockHash: "pending", // Will be updated when order is completed
-      txid: "pending", // Will be updated when order is completed
-      inscriptionId: undefined,
-      inscriptionUrl: undefined,
-      feeRate: parseInt(process.env.INSCRIPTION_FEE_RATE ?? "15"),
-      unisatOrderId: order.orderId,
-      orderStatus: "pending",
-      paymentAddress: order.payAddress,
-      paymentAmount: order.amount,
-      metadata: JSON.stringify(
-        unisatService.generateInscriptionPayload(
-          proposalForInscription,
-          currentBlockHeight,
-        ),
-      ),
-    });
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        orderId: order.orderId,
-        payAddress: order.payAddress,
-        amount: order.amount,
-        status: "pending",
-        inscriptionId: proposalData.id, // Use proposal ID as reference
+    // Prevent manual inscription - only automatic inscriptions allowed
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          "Manual inscription is disabled. Proposals are now automatically inscribed based on voting leaderboard.",
       },
-    });
+      { status: 403 },
+    );
   } catch (error) {
     console.error("Error creating UniSat order:", error);
     return NextResponse.json(

@@ -22,6 +22,9 @@ export const env = createEnv({
     CRON_SECRET: z.string().optional(),
     UNISAT_API: z.string().optional(),
     UNISAT_RECEIVE_ADDRESS: z.string().optional(),
+    PLATFORM_WALLET_PRIVATE_KEY_WIF: z.string().optional(),
+    PLATFORM_WALLET_PRIVATE_KEY_HEX: z.string().optional(),
+    PLATFORM_WALLET_ADDRESS: z.string().optional(),
   },
 
   /**
@@ -56,6 +59,11 @@ export const env = createEnv({
     NEXT_PUBLIC_ESPLORA_API_URL: process.env.NEXT_PUBLIC_ESPLORA_API_URL,
     UNISAT_API: process.env.UNISAT_API,
     UNISAT_RECEIVE_ADDRESS: process.env.UNISAT_RECEIVE_ADDRESS,
+    PLATFORM_WALLET_PRIVATE_KEY_WIF:
+      process.env.PLATFORM_WALLET_PRIVATE_KEY_WIF,
+    PLATFORM_WALLET_PRIVATE_KEY_HEX:
+      process.env.PLATFORM_WALLET_PRIVATE_KEY_HEX,
+    PLATFORM_WALLET_ADDRESS: process.env.PLATFORM_WALLET_ADDRESS,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

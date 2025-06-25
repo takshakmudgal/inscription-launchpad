@@ -25,7 +25,18 @@ export interface Proposal {
   votesUp: number;
   votesDown: number;
   totalVotes: number;
-  status: "active" | "inscribed" | "rejected";
+  status:
+    | "active"
+    | "leader"
+    | "inscribing"
+    | "inscribed"
+    | "rejected"
+    | "expired";
+  // Automatic inscription timing fields
+  firstTimeAsLeader?: string; // When this proposal first became #1
+  leaderStartBlock?: number; // Block height when this proposal first became #1
+  leaderboardMinBlocks: number; // Minimum blocks to stay as leader before inscription
+  expirationBlock?: number; // Block at which this proposal expires if not inscribed
   createdAt: string;
   updatedAt: string;
   submitter?: User;
@@ -56,6 +67,25 @@ export interface Inscription {
   paymentAmount?: number;
   createdAt: string;
   proposal?: Proposal;
+}
+
+// Database record type for internal use
+export interface InscriptionRecord {
+  id: number;
+  proposalId: number;
+  blockHeight: number;
+  blockHash: string;
+  txid: string;
+  inscriptionId: string | null;
+  inscriptionUrl: string | null;
+  feeRate: number | null;
+  totalFees: number | null;
+  metadata: string | null;
+  unisatOrderId: string | null;
+  orderStatus: string | null;
+  paymentAddress: string | null;
+  paymentAmount: number | null;
+  createdAt: Date;
 }
 
 export interface BlockInfo {

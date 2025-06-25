@@ -52,6 +52,11 @@ export async function GET(
         votesDown: proposals.votesDown,
         totalVotes: proposals.totalVotes,
         status: proposals.status,
+        // New automatic inscription timing fields
+        firstTimeAsLeader: proposals.firstTimeAsLeader,
+        leaderStartBlock: proposals.leaderStartBlock,
+        leaderboardMinBlocks: proposals.leaderboardMinBlocks,
+        expirationBlock: proposals.expirationBlock,
         createdAt: proposals.createdAt,
         updatedAt: proposals.updatedAt,
         submitterWallet: users.walletAddress,
@@ -64,26 +69,24 @@ export async function GET(
     let results;
 
     if (status !== "all") {
+      const statusCondition =
+        status === "active"
+          ? sql`${proposals.status} IN ('active', 'leader')` // Active excludes expired
+          : eq(
+              proposals.status,
+              status as "inscribed" | "rejected" | "expired",
+            );
+
       if (sortBy === "totalVotes") {
         results =
           order === "desc"
             ? await baseQuery
-                .where(
-                  eq(
-                    proposals.status,
-                    status as "active" | "inscribed" | "rejected",
-                  ),
-                )
+                .where(statusCondition)
                 .orderBy(desc(proposals.totalVotes))
                 .limit(limit)
                 .offset(offset)
             : await baseQuery
-                .where(
-                  eq(
-                    proposals.status,
-                    status as "active" | "inscribed" | "rejected",
-                  ),
-                )
+                .where(statusCondition)
                 .orderBy(proposals.totalVotes)
                 .limit(limit)
                 .offset(offset);
@@ -91,22 +94,12 @@ export async function GET(
         results =
           order === "desc"
             ? await baseQuery
-                .where(
-                  eq(
-                    proposals.status,
-                    status as "active" | "inscribed" | "rejected",
-                  ),
-                )
+                .where(statusCondition)
                 .orderBy(desc(proposals.createdAt))
                 .limit(limit)
                 .offset(offset)
             : await baseQuery
-                .where(
-                  eq(
-                    proposals.status,
-                    status as "active" | "inscribed" | "rejected",
-                  ),
-                )
+                .where(statusCondition)
                 .orderBy(proposals.createdAt)
                 .limit(limit)
                 .offset(offset);
@@ -114,22 +107,12 @@ export async function GET(
         results =
           order === "desc"
             ? await baseQuery
-                .where(
-                  eq(
-                    proposals.status,
-                    status as "active" | "inscribed" | "rejected",
-                  ),
-                )
+                .where(statusCondition)
                 .orderBy(desc(proposals.name))
                 .limit(limit)
                 .offset(offset)
             : await baseQuery
-                .where(
-                  eq(
-                    proposals.status,
-                    status as "active" | "inscribed" | "rejected",
-                  ),
-                )
+                .where(statusCondition)
                 .orderBy(proposals.name)
                 .limit(limit)
                 .offset(offset);
@@ -178,10 +161,12 @@ export async function GET(
             .select({ count: sql<number>`count(*)` })
             .from(proposals)
             .where(
-              eq(
-                proposals.status,
-                status as "active" | "inscribed" | "rejected",
-              ),
+              status === "active"
+                ? sql`${proposals.status} IN ('active', 'leader')` // Active excludes expired
+                : eq(
+                    proposals.status,
+                    status as "inscribed" | "rejected" | "expired",
+                  ),
             )
         : await db.select({ count: sql<number>`count(*)` }).from(proposals);
 
@@ -203,6 +188,11 @@ export async function GET(
       votesDown: row.votesDown,
       totalVotes: row.totalVotes,
       status: row.status,
+      // New automatic inscription timing fields
+      firstTimeAsLeader: row.firstTimeAsLeader?.toISOString(),
+      leaderStartBlock: row.leaderStartBlock ?? undefined,
+      leaderboardMinBlocks: row.leaderboardMinBlocks,
+      expirationBlock: row.expirationBlock ?? undefined,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       submitter: row.submitterWallet
@@ -334,6 +324,11 @@ export async function POST(
       votesDown: created.votesDown,
       totalVotes: created.totalVotes,
       status: created.status,
+      // New automatic inscription timing fields
+      firstTimeAsLeader: created.firstTimeAsLeader?.toISOString(),
+      leaderStartBlock: created.leaderStartBlock ?? undefined,
+      leaderboardMinBlocks: created.leaderboardMinBlocks,
+      expirationBlock: created.expirationBlock ?? undefined,
       createdAt: created.createdAt.toISOString(),
       updatedAt: created.updatedAt.toISOString(),
     };

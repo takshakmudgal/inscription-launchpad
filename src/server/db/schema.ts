@@ -16,8 +16,11 @@ export const createTable = pgTableCreator((name) => `bitmemes_${name}`);
 export const voteTypeEnum = pgEnum("vote_type", ["up", "down"]);
 export const proposalStatusEnum = pgEnum("proposal_status", [
   "active",
-  "inscribed",
+  "leader", // Proposal is #1 but waiting for minimum blocks
+  "inscribing", // Payment sent, waiting for confirmation
+  "inscribed", // Successfully inscribed and confirmed
   "rejected",
+  "expired", // New status for proposals that expired without inscription
 ]);
 
 // Users table
@@ -65,6 +68,15 @@ export const proposals = createTable(
     votesDown: integer("votes_down").default(0).notNull(),
     totalVotes: integer("total_votes").default(0).notNull(),
     status: proposalStatusEnum("status").default("active").notNull(),
+    // Automatic inscription timing fields
+    firstTimeAsLeader: timestamp("first_time_as_leader", {
+      withTimezone: true,
+    }), // When this proposal first became #1
+    leaderStartBlock: integer("leader_start_block"), // Block height when this proposal first became #1
+    leaderboardMinBlocks: integer("leaderboard_min_blocks")
+      .default(2)
+      .notNull(), // Minimum blocks to stay as leader before inscription
+    expirationBlock: integer("expiration_block"), // Block at which this proposal expires if not inscribed
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -77,6 +89,8 @@ export const proposals = createTable(
     index("proposal_status_idx").on(t.status),
     index("proposal_votes_idx").on(t.totalVotes),
     index("proposal_created_idx").on(t.createdAt),
+    index("proposal_leader_time_idx").on(t.firstTimeAsLeader),
+    index("proposal_expiration_idx").on(t.expirationBlock),
   ],
 );
 
@@ -121,7 +135,7 @@ export const inscriptions = createTable(
     metadata: text("metadata"), // JSON string of the inscribed data
     // UniSat specific fields
     unisatOrderId: varchar("unisat_order_id", { length: 100 }), // UniSat order ID
-    orderStatus: varchar("order_status", { length: 20 }), // pending, minted, sent, canceled
+    orderStatus: varchar("order_status", { length: 50 }), // pending, minted, sent, canceled
     paymentAddress: text("payment_address"), // UniSat payment address
     paymentAmount: bigint("payment_amount", { mode: "number" }), // Amount to pay in satoshis - using bigint for large values
     createdAt: timestamp("created_at", { withTimezone: true })

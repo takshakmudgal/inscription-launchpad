@@ -106,30 +106,37 @@ export default function HomePage() {
 
   const fetchProposals = async () => {
     try {
-      // Add timestamp to prevent caching and fetch only active proposals for main section
-      const url = `/api/proposals?status=active&t=${Date.now()}`;
-      console.log("🔍 Fetching active proposals from:", url);
-      const response = await fetch(url, {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
-      });
-      const data: ApiResponse<ProposalsResponse> = await response.json();
-      if (data.success && data.data?.proposals) {
-        setProposals(data.data.proposals);
-        console.log(
-          "🔄 Active proposals refreshed:",
-          data.data.proposals.length,
-          "total",
-          data.data.proposals.map((p) => ({
-            ticker: p.ticker,
-            status: p.status,
-          })),
-        );
+      // Fetch all non-inscribed proposals (active, leader, inscribing)
+      const statuses = ["active", "leader", "inscribing"];
+      const allProposals: Proposal[] = [];
+
+      for (const status of statuses) {
+        const url = `/api/proposals?status=${status}&t=${Date.now()}`;
+        console.log(`🔍 Fetching ${status} proposals from:`, url);
+        const response = await fetch(url, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        });
+        const data: ApiResponse<ProposalsResponse> = await response.json();
+        if (data.success && data.data?.proposals) {
+          allProposals.push(...data.data.proposals);
+        }
       }
+
+      setProposals(allProposals);
+      console.log(
+        "🔄 All proposals refreshed:",
+        allProposals.length,
+        "total",
+        allProposals.map((p) => ({
+          ticker: p.ticker,
+          status: p.status,
+        })),
+      );
     } catch (error) {
       console.error("Error fetching proposals:", error);
     }
@@ -341,91 +348,6 @@ export default function HomePage() {
     }
   };
 
-  const handleInscribe = async (proposalId: number) => {
-    if (!isConnected) {
-      setIsWalletModalOpen(true);
-      return;
-    }
-
-    // Find the proposal to get its details
-    const proposal = proposals.find((p) => p.id === proposalId);
-    if (!proposal) {
-      console.error("Proposal not found");
-      return;
-    }
-
-    // Check if proposal is already inscribed or has pending inscription
-    if (proposal.status === "inscribed") {
-      alert("This proposal has already been inscribed on Bitcoin!");
-      return;
-    }
-
-    if (proposal.status === "rejected") {
-      alert("This proposal has been rejected and cannot be inscribed.");
-      return;
-    }
-
-    // Check for existing inscription orders
-    try {
-      const statusResponse = await fetch(
-        `/api/proposals/${proposalId}/inscription-status`,
-      );
-      const statusData =
-        (await statusResponse.json()) as ApiResponse<InscriptionStatus>;
-
-      if (statusData.success && statusData.data?.hasInscription) {
-        const status = statusData.data;
-
-        if (status.orderStatus === "minted" || status.orderStatus === "sent") {
-          alert("This proposal has already been successfully inscribed!");
-          // Refresh all data to get updated status
-          await refreshAllData();
-          return;
-        }
-
-        if (
-          status.orderStatus === "pending" ||
-          status.orderStatus === "inscribing"
-        ) {
-          const proceed = confirm(
-            `This proposal already has a pending inscription order (Status: ${status.orderStatus}). ` +
-              "Would you like to view the existing order instead of creating a new one?",
-          );
-          if (proceed && status.orderId) {
-            // Resume existing order
-            setExistingOrderId(status.orderId);
-            setSelectedProposal(proposal);
-            setIsInscriptionModalOpen(true);
-            return;
-          } else if (!proceed) {
-            return;
-          }
-        }
-
-        if (
-          status.orderStatus === "canceled" ||
-          status.orderStatus === "refunded"
-        ) {
-          const proceed = confirm(
-            `This proposal had a previous inscription order that was ${status.orderStatus}. ` +
-              "Would you like to create a new order?",
-          );
-          if (!proceed) {
-            return;
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error checking inscription status:", error);
-      // Continue with inscription if status check fails
-    }
-
-    // Set the selected proposal and open the inscription modal (for new order)
-    setExistingOrderId(undefined);
-    setSelectedProposal(proposal);
-    setIsInscriptionModalOpen(true);
-  };
-
   const handleResumeOrder = (
     orderId: string,
     proposalId: number,
@@ -445,6 +367,7 @@ export default function HomePage() {
       votesDown: 0,
       totalVotes: 0,
       status: "active",
+      leaderboardMinBlocks: 2, // Default value
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -486,27 +409,16 @@ export default function HomePage() {
   };
 
   const getFilteredProposals = () => {
-    const activeProposals = proposals.filter((p) => p.status === "active");
-    console.log("🛡️ Client-side filtering:", {
-      totalProposals: proposals.length,
-      activeProposals: activeProposals.length,
-      proposalStatuses: proposals.map((p) => ({
-        ticker: p.ticker,
-        status: p.status,
-      })),
-    });
+    const activeProposals = proposals.filter(
+      (p) => p.status === "active" || p.status === "leader",
+    );
 
     switch (activeTab) {
       case "trending":
-        return activeProposals.sort((a, b) => {
-          const aScore =
-            (a.votesUp - a.votesDown) /
-            (Date.now() - new Date(a.createdAt).getTime());
-          const bScore =
-            (b.votesUp - b.votesDown) /
-            (Date.now() - new Date(b.createdAt).getTime());
-          return bScore - aScore;
-        });
+        return activeProposals.sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        );
       case "new":
         return activeProposals.sort(
           (a, b) =>
@@ -521,6 +433,15 @@ export default function HomePage() {
     }
   };
 
+  const getProcessingProposals = () => {
+    return proposals
+      .filter((p) => p.status === "inscribing")
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      );
+  };
+
   const getInscribedProposals = () => {
     return inscribedProposals.sort(
       (a, b) =>
@@ -532,7 +453,12 @@ export default function HomePage() {
     (sum, p) => sum + p.totalVotes,
     0,
   );
-  const activeProposalsCount = proposals.length;
+  const activeProposalsCount = proposals.filter(
+    (p) => p.status === "active" || p.status === "leader",
+  ).length;
+  const processingProposalsCount = proposals.filter(
+    (p) => p.status === "inscribing",
+  ).length;
   const inscribedProposalsCount = inscribedProposals.length;
 
   if (!mounted) {
@@ -576,6 +502,14 @@ export default function HomePage() {
                 </div>
                 <div className="text-xs text-gray-400">Active</div>
               </div>
+              {processingProposalsCount > 0 && (
+                <div className="text-center">
+                  <div className="text-lg font-bold text-blue-400">
+                    {processingProposalsCount}
+                  </div>
+                  <div className="text-xs text-gray-400">Processing</div>
+                </div>
+              )}
               <div className="text-center">
                 <div className="text-lg font-bold text-white">
                   {inscribedProposalsCount}
@@ -678,7 +612,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="mt-8 flex flex-col justify-center gap-4 sm:flex-row"
+            className="mt-6 flex flex-col justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-4"
           >
             <button
               onClick={() => {
@@ -688,7 +622,7 @@ export default function HomePage() {
                   setIsModalOpen(true);
                 }
               }}
-              className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-8 py-4 text-lg font-bold text-white shadow-xl transition-all hover:scale-105 hover:from-purple-600 hover:to-pink-600"
+              className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 text-base font-bold text-white shadow-xl transition-all hover:scale-105 hover:from-purple-600 hover:to-pink-600 sm:px-8 sm:py-4 sm:text-lg"
             >
               🚀 Submit Your Meme
             </button>
@@ -698,7 +632,7 @@ export default function HomePage() {
                   .getElementById("proposals")
                   ?.scrollIntoView({ behavior: "smooth" })
               }
-              className="rounded-xl border border-white/20 bg-white/5 px-8 py-4 text-lg font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10"
+              className="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 sm:px-8 sm:py-4 sm:text-lg"
             >
               🗳️ Vote Now
             </button>
@@ -712,22 +646,95 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Proposals Section */}
+      {/* SECTION 1: Active/Leader Proposals */}
       <section id="proposals" className="px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           {/* Section Header */}
           <div className="mb-12 text-center">
-            <h3 className="text-3xl font-bold text-white">
-              🏆 Meme Leaderboard
-            </h3>
+            <div className="mb-4 flex items-center justify-center gap-4">
+              <h3 className="text-3xl font-bold text-white">
+                🏆 Meme Leaderboard
+              </h3>
+
+              {/* Live System Status */}
+              <div className="hidden items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-2 lg:flex">
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-green-400"></div>
+                  <span className="text-gray-400">Block</span>
+                  <span className="font-mono text-white">
+                    {currentBlock.toLocaleString()}
+                  </span>
+                </div>
+                <div className="text-gray-500">•</div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-gray-400">Active</span>
+                  <span className="font-semibold text-green-400">
+                    {activeProposalsCount}
+                  </span>
+                </div>
+                {processingProposalsCount > 0 && (
+                  <>
+                    <div className="text-gray-500">•</div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-400">Processing</span>
+                      <span className="font-semibold text-blue-400">
+                        {processingProposalsCount}
+                      </span>
+                    </div>
+                  </>
+                )}
+                {inscribedProposalsCount > 0 && (
+                  <>
+                    <div className="text-gray-500">•</div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-400">Inscribed</span>
+                      <span className="font-semibold text-purple-400">
+                        {inscribedProposalsCount}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
             <p className="mt-4 text-gray-400">
               Vote for your favorite memes. Top proposals get inscribed on
               Bitcoin!
             </p>
+
+            {/* Mobile System Status */}
+            <div className="mt-4 flex items-center justify-center gap-4 text-xs lg:hidden">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-400"></div>
+                <span className="text-gray-400">
+                  Block {currentBlock.toLocaleString()}
+                </span>
+              </div>
+              <div className="text-gray-500">•</div>
+              <span className="text-gray-400">
+                {activeProposalsCount} Active
+              </span>
+              {processingProposalsCount > 0 && (
+                <>
+                  <div className="text-gray-500">•</div>
+                  <span className="text-gray-400">
+                    {processingProposalsCount} Processing
+                  </span>
+                </>
+              )}
+              {inscribedProposalsCount > 0 && (
+                <>
+                  <div className="text-gray-500">•</div>
+                  <span className="text-gray-400">
+                    {inscribedProposalsCount} Inscribed
+                  </span>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Filter Tabs */}
-          <div className="mb-8 flex justify-center">
+          <div className="mb-6 flex justify-center sm:mb-8">
             <div className="flex rounded-xl bg-white/5 p-1 backdrop-blur-sm">
               {[
                 {
@@ -741,19 +748,20 @@ export default function HomePage() {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key as typeof activeTab)}
-                  className={`relative rounded-lg px-6 py-3 text-sm font-medium transition-all ${
+                  className={`relative rounded-lg px-3 py-2 text-xs font-medium transition-all sm:px-6 sm:py-3 sm:text-sm ${
                     activeTab === tab.key
                       ? "bg-white/10 text-white shadow-lg"
                       : "text-gray-400 hover:text-white"
                   }`}
                 >
-                  {tab.label}
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.label.split(" ")[0]}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Proposals Grid */}
+          {/* Active/Leader Proposals Grid */}
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -761,46 +769,47 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+              className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
             >
-              {getFilteredProposals()
-                .filter((p) => p.status === "active")
-                .map((proposal, index) => (
-                  <motion.div
-                    key={proposal.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <ProposalCard
-                      id={proposal.id}
-                      name={proposal.name}
-                      ticker={proposal.ticker}
-                      description={proposal.description}
-                      imageUrl={proposal.imageUrl}
-                      creator={
-                        proposal.submitter?.username
-                          ? userProfile &&
-                            proposal.submittedBy === userProfile.id
-                            ? `${proposal.submitter.username} (You)`
-                            : proposal.submitter.username
-                          : proposal.submittedBy
-                            ? `User #${proposal.submittedBy}`
-                            : "Anonymous"
-                      }
-                      votesUp={proposal.votesUp}
-                      votesDown={proposal.votesDown}
-                      totalVotes={proposal.totalVotes}
-                      status={proposal.status}
-                      onVote={handleVote}
-                      onInscribe={handleInscribe}
-                    />
-                  </motion.div>
-                ))}
+              {getFilteredProposals().map((proposal, index) => (
+                <motion.div
+                  key={proposal.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <ProposalCard
+                    id={proposal.id}
+                    name={proposal.name}
+                    ticker={proposal.ticker}
+                    description={proposal.description}
+                    imageUrl={proposal.imageUrl}
+                    creator={
+                      proposal.submitter?.username
+                        ? userProfile && proposal.submittedBy === userProfile.id
+                          ? `${proposal.submitter.username} (You)`
+                          : proposal.submitter.username
+                        : proposal.submittedBy
+                          ? `User #${proposal.submittedBy}`
+                          : "Anonymous"
+                    }
+                    votesUp={proposal.votesUp}
+                    votesDown={proposal.votesDown}
+                    totalVotes={proposal.totalVotes}
+                    status={proposal.status}
+                    firstTimeAsLeader={proposal.firstTimeAsLeader}
+                    leaderStartBlock={proposal.leaderStartBlock}
+                    leaderboardMinBlocks={proposal.leaderboardMinBlocks}
+                    expirationBlock={proposal.expirationBlock}
+                    currentBlockHeight={currentBlock}
+                    onVote={handleVote}
+                  />
+                </motion.div>
+              ))}
             </motion.div>
           </AnimatePresence>
 
-          {/* Empty State */}
+          {/* Empty State for Active Proposals */}
           {getFilteredProposals().length === 0 && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -831,15 +840,88 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Inscribed Proposals Section */}
+      {/* SECTION 2: Processing (Inscribing) Proposals */}
+      {getProcessingProposals().length > 0 && (
+        <section className="bg-gradient-to-r from-blue-900/10 to-purple-900/10 px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            {/* Section Header */}
+            <div className="mb-12 text-center">
+              <div className="mb-4 flex items-center justify-center gap-4">
+                <h3 className="text-3xl font-bold text-white">
+                  ⚡ Processing Inscriptions
+                </h3>
+                <div className="flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2">
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-blue-400"></div>
+                  <span className="text-sm font-medium text-blue-400">
+                    {getProcessingProposals().length} Processing
+                  </span>
+                </div>
+              </div>
+              <p className="mt-4 text-gray-400">
+                These memes are currently being inscribed on the Bitcoin
+                blockchain. This process typically takes a few minutes.
+              </p>
+            </div>
+
+            {/* Processing Proposals Grid */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {getProcessingProposals().map((proposal, index) => (
+                <motion.div
+                  key={`processing-${proposal.id}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <ProposalCard
+                    id={proposal.id}
+                    name={proposal.name}
+                    ticker={proposal.ticker}
+                    description={proposal.description}
+                    imageUrl={proposal.imageUrl}
+                    creator={
+                      proposal.submitter?.username
+                        ? userProfile && proposal.submittedBy === userProfile.id
+                          ? `${proposal.submitter.username} (You)`
+                          : proposal.submitter.username
+                        : proposal.submittedBy
+                          ? `User #${proposal.submittedBy}`
+                          : "Anonymous"
+                    }
+                    votesUp={proposal.votesUp}
+                    votesDown={proposal.votesDown}
+                    totalVotes={proposal.totalVotes}
+                    status={proposal.status}
+                    firstTimeAsLeader={proposal.firstTimeAsLeader}
+                    leaderStartBlock={proposal.leaderStartBlock}
+                    leaderboardMinBlocks={proposal.leaderboardMinBlocks}
+                    expirationBlock={proposal.expirationBlock}
+                    currentBlockHeight={currentBlock}
+                    onVote={handleVote}
+                  />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* SECTION 3: Inscribed Proposals */}
       {getInscribedProposals().length > 0 && (
         <section className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
             {/* Section Header */}
             <div className="mb-12 text-center">
-              <h3 className="text-3xl font-bold text-white">
-                🏆 Bitcoin Inscriptions
-              </h3>
+              <div className="mb-4 flex items-center justify-center gap-4">
+                <h3 className="text-3xl font-bold text-white">
+                  🏆 Bitcoin Inscriptions
+                </h3>
+                <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2">
+                  <div className="h-2 w-2 rounded-full bg-green-400"></div>
+                  <span className="text-sm font-medium text-green-400">
+                    {inscribedProposalsCount} Inscribed
+                  </span>
+                </div>
+              </div>
               <p className="mt-4 text-gray-400">
                 Memes that made it! These proposals have been permanently
                 inscribed on Bitcoin.
@@ -847,41 +929,42 @@ export default function HomePage() {
             </div>
 
             {/* Inscribed Proposals Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {getInscribedProposals()
-                .filter((p) => p.status === "inscribed")
-                .map((proposal, index) => (
-                  <motion.div
-                    key={`inscribed-${proposal.id}`}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <ProposalCard
-                      id={proposal.id}
-                      name={proposal.name}
-                      ticker={proposal.ticker}
-                      description={proposal.description}
-                      imageUrl={proposal.imageUrl}
-                      creator={
-                        proposal.submitter?.username
-                          ? userProfile &&
-                            proposal.submittedBy === userProfile.id
-                            ? `${proposal.submitter.username} (You)`
-                            : proposal.submitter.username
-                          : proposal.submittedBy
-                            ? `User #${proposal.submittedBy}`
-                            : "Anonymous"
-                      }
-                      votesUp={proposal.votesUp}
-                      votesDown={proposal.votesDown}
-                      totalVotes={proposal.totalVotes}
-                      status={proposal.status}
-                      onVote={handleVote}
-                      onInscribe={handleInscribe}
-                    />
-                  </motion.div>
-                ))}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {getInscribedProposals().map((proposal, index) => (
+                <motion.div
+                  key={`inscribed-${proposal.id}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <ProposalCard
+                    id={proposal.id}
+                    name={proposal.name}
+                    ticker={proposal.ticker}
+                    description={proposal.description}
+                    imageUrl={proposal.imageUrl}
+                    creator={
+                      proposal.submitter?.username
+                        ? userProfile && proposal.submittedBy === userProfile.id
+                          ? `${proposal.submitter.username} (You)`
+                          : proposal.submitter.username
+                        : proposal.submittedBy
+                          ? `User #${proposal.submittedBy}`
+                          : "Anonymous"
+                    }
+                    votesUp={proposal.votesUp}
+                    votesDown={proposal.votesDown}
+                    totalVotes={proposal.totalVotes}
+                    status={proposal.status}
+                    firstTimeAsLeader={proposal.firstTimeAsLeader}
+                    leaderStartBlock={proposal.leaderStartBlock}
+                    leaderboardMinBlocks={proposal.leaderboardMinBlocks}
+                    expirationBlock={proposal.expirationBlock}
+                    currentBlockHeight={currentBlock}
+                    onVote={handleVote}
+                  />
+                </motion.div>
+              ))}
             </div>
           </div>
         </section>

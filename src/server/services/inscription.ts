@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import { env } from "~/env";
 import type { Proposal, InscriptionPayload } from "~/types";
 import { unisatService } from "./unisat";
+import { bitcoinWallet } from "./bitcoin-wallet";
 
 const execAsync = promisify(exec);
 
@@ -187,19 +188,135 @@ export class InscriptionService {
     );
 
     try {
-      // Try UniSat first if API key is available
-      if (this.unisatApiKey) {
-        console.log("Attempting inscription with UniSat...");
-        const result = await unisatService.inscribe(proposal, blockHeight);
+      // Try UniSat first if API key is available and platform wallet is configured
+      if (this.unisatApiKey && env.PLATFORM_WALLET_ADDRESS) {
+        console.log(
+          "Attempting automatic inscription with UniSat platform wallet...",
+        );
 
-        // For UniSat, we return the order information
-        return {
-          txid: result.orderId, // Store order ID as txid initially
-          inscriptionId: result.inscriptionId,
-          orderId: result.orderId,
-          payAddress: result.payAddress,
-          paymentAmount: result.paymentAmount,
-        };
+        // Use platform wallet address for automatic inscription
+        const result = await unisatService.createInscriptionOrder(
+          proposal,
+          blockHeight,
+          env.PLATFORM_WALLET_ADDRESS,
+        );
+
+        console.log(
+          `Platform wallet inscription order created: ${result.orderId}`,
+        );
+        console.log(
+          `Payment required: ${result.amount} sats to ${result.payAddress}`,
+        );
+
+        // AUTOMATIC PAYMENT: Use platform wallet to pay for inscription
+        try {
+          console.log("💳 Initiating automatic payment...");
+
+          // Validate wallet configuration first
+          const walletAddress = await bitcoinWallet.getAddress();
+          console.log(`🏦 Platform wallet address: ${walletAddress}`);
+
+          // Check wallet balance first
+          const balance = await bitcoinWallet.getBalance();
+          console.log(`💰 Platform wallet balance: ${balance} sats`);
+
+          // Also check UTXOs to ensure we have spendable funds
+          const utxos = await bitcoinWallet.getUTXOs();
+          console.log(
+            `📦 Available UTXOs: ${utxos.length} (total: ${utxos.reduce((sum, u) => sum + u.value, 0)} sats)`,
+          );
+
+          if (balance < result.amount) {
+            const deficit = result.amount - balance;
+            console.error(
+              `❌ Insufficient balance for order ${result.orderId}`,
+            );
+            console.error(`   Required: ${result.amount} sats`);
+            console.error(`   Available: ${balance} sats`);
+            console.error(`   Deficit: ${deficit} sats`);
+
+            // Instead of throwing, create order without payment for manual processing
+            console.log(
+              `⚠️ Creating order without automatic payment - manual payment required`,
+            );
+
+            return {
+              txid: result.orderId, // Store order ID as txid initially
+              inscriptionId: undefined, // Will be set when order completes
+              orderId: result.orderId,
+              payAddress: result.payAddress,
+              paymentAmount: result.amount,
+            };
+          }
+
+          if (utxos.length === 0) {
+            throw new Error("No spendable UTXOs available in wallet");
+          }
+
+          // Send payment automatically
+          console.log(
+            `🚀 Sending payment: ${result.amount} sats to ${result.payAddress}`,
+          );
+          const paymentResult = await bitcoinWallet.sendPayment({
+            toAddress: result.payAddress,
+            amount: result.amount,
+            feeRate: parseInt(env.INSCRIPTION_FEE_RATE),
+          });
+
+          console.log(`🎉 Automatic payment successful!`);
+          console.log(`   Payment TXID: ${paymentResult.txid}`);
+          console.log(`   Amount paid: ${result.amount} sats`);
+          console.log(`   Fee: ${paymentResult.fee} sats`);
+          console.log(`   Order ID: ${result.orderId}`);
+
+          // Start monitoring payment confirmation in background
+          bitcoinWallet
+            .waitForConfirmation(paymentResult.txid)
+            .then((confirmed) => {
+              if (confirmed) {
+                console.log(`✅ Payment confirmed for order ${result.orderId}`);
+              } else {
+                console.log(
+                  `⚠️ Payment confirmation timeout for order ${result.orderId}`,
+                );
+              }
+            })
+            .catch((error) => {
+              console.error(
+                `❌ Payment monitoring error for order ${result.orderId}:`,
+                error,
+              );
+            });
+
+          // Return order info with payment txid for tracking
+          return {
+            txid: paymentResult.txid, // Store actual payment txid
+            inscriptionId: undefined, // Will be set when order completes
+            orderId: result.orderId,
+            payAddress: result.payAddress,
+            paymentAmount: result.amount,
+          };
+        } catch (paymentError) {
+          console.error("❌ Automatic payment failed:", paymentError);
+          console.error(`   Order ID: ${result.orderId}`);
+          console.error(`   Payment address: ${result.payAddress}`);
+          console.error(`   Amount: ${result.amount} sats`);
+
+          // Don't throw error - create order for manual payment instead
+          console.log(
+            `⚠️ Falling back to manual payment mode for order ${result.orderId}`,
+          );
+
+          return {
+            txid: result.orderId, // Store order ID as txid initially
+            inscriptionId: undefined, // Will be set when order completes
+            orderId: result.orderId,
+            payAddress: result.payAddress,
+            paymentAmount: result.amount,
+          };
+        }
+
+        // This code block has been moved above to handle both payment success and fallback cases
       }
 
       // Fall back to OrdinalsBot if API key is available

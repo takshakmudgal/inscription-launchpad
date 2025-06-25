@@ -56,6 +56,7 @@ async function testUnisatImplementation() {
     imageUrl: "https://example.com/test.jpg",
     bannerUrl: undefined,
     submittedBy: undefined,
+    leaderboardMinBlocks: 2, // Add the required field
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
