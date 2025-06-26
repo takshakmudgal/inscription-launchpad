@@ -6,20 +6,19 @@ import {
 
 interface OrderMonitorOptions {
   enabled?: boolean;
-  interval?: number; // in milliseconds
+  interval?: number;
   onOrderComplete?: (orderId: string, status: string) => void;
   onOrderFailed?: (orderId: string, status: string) => void;
 }
 
 export function useBackgroundOrderMonitor({
   enabled = true,
-  interval = 60000, // 1 minute default
+  interval = 60000,
   onOrderComplete,
   onOrderFailed,
 }: OrderMonitorOptions = {}) {
   const updateProposalStatus = useCallback(async (orderId: string) => {
     try {
-      // Find the proposal associated with this order and update its status
       const response = await fetch("/api/proposals", {
         method: "PATCH",
         headers: {
@@ -53,11 +52,9 @@ export function useBackgroundOrderMonitor({
         if (response.ok && data.success) {
           const status = data.data.status;
 
-          // Check if order is complete
           if (status === "minted" || status === "sent") {
             removeOrderFromStorage(orderId);
 
-            // Update the proposal status in the database
             await updateProposalStatus(orderId);
 
             onOrderComplete?.(orderId, status);
@@ -67,7 +64,6 @@ export function useBackgroundOrderMonitor({
             return true;
           }
 
-          // Check if order failed
           if (status === "canceled" || status === "refunded") {
             removeOrderFromStorage(orderId);
             onOrderFailed?.(orderId, status);
@@ -75,7 +71,6 @@ export function useBackgroundOrderMonitor({
             return true;
           }
 
-          // Order still pending
           console.log(
             `⏳ Background monitor: Order ${orderId} still ${status}`,
           );
@@ -110,7 +105,6 @@ export function useBackgroundOrderMonitor({
         `🔍 Background monitor: Checking ${orderIds.length} active orders`,
       );
 
-      // Check all orders in parallel
       const results = await Promise.allSettled(
         orderIds.map((orderId) => checkOrderStatus(orderId)),
       );
@@ -134,13 +128,10 @@ export function useBackgroundOrderMonitor({
       return;
     }
 
-    // Check immediately on mount
     checkAllActiveOrders();
 
-    // Set up interval for regular checks
     const intervalId = setInterval(checkAllActiveOrders, interval);
 
-    // Add visibility change listener to check when user returns to tab
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         checkAllActiveOrders();
@@ -149,7 +140,6 @@ export function useBackgroundOrderMonitor({
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Check on focus (when user returns to window)
     const handleFocus = () => {
       checkAllActiveOrders();
     };

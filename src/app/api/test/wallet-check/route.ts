@@ -16,7 +16,6 @@ export async function GET(request: NextRequest) {
       errors: [],
     };
 
-    // Check if wallet is properly configured
     const requiredEnvVars = [
       "PLATFORM_WALLET_PRIVATE_KEY_WIF",
       "PLATFORM_WALLET_PRIVATE_KEY_HEX",
@@ -80,7 +79,6 @@ export async function POST(request: NextRequest) {
     const { action, toAddress, amount } = body;
 
     if (action === "test_payment" && toAddress && amount) {
-      // Test payment capability (dry run)
       try {
         const balance = await bitcoinWallet.getBalance();
         const utxos = await bitcoinWallet.getUTXOs();

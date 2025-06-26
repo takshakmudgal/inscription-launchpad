@@ -45,13 +45,8 @@ export function SubmitProposalModal({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
-
-    // Auto-format ticker to uppercase
     const finalValue = name === "ticker" ? value.toUpperCase() : value;
-
     setFormData((prev) => ({ ...prev, [name]: finalValue }));
-
-    // Clear specific field error when user starts typing
     if (errors[name as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
@@ -59,8 +54,6 @@ export function SubmitProposalModal({
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
-
-    // Name validation
     if (!formData.name.trim()) {
       newErrors.name = "Meme name is required";
     } else if (formData.name.length < 2) {
@@ -69,7 +62,6 @@ export function SubmitProposalModal({
       newErrors.name = "Name must be less than 50 characters";
     }
 
-    // Ticker validation
     if (!formData.ticker.trim()) {
       newErrors.ticker = "Ticker is required";
     } else if (formData.ticker.length < 2) {
@@ -80,7 +72,6 @@ export function SubmitProposalModal({
       newErrors.ticker = "Ticker can only contain letters and numbers";
     }
 
-    // Description validation
     if (!formData.description.trim()) {
       newErrors.description = "Description is required";
     } else if (formData.description.length < 10) {
@@ -89,7 +80,6 @@ export function SubmitProposalModal({
       newErrors.description = "Description must be less than 280 characters";
     }
 
-    // Image validation
     if (!formData.imageUrl && !imageFile) {
       newErrors.imageUrl = "Meme image is required";
     }
@@ -102,7 +92,6 @@ export function SubmitProposalModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       setErrors((prev) => ({
         ...prev,
@@ -111,7 +100,6 @@ export function SubmitProposalModal({
       return;
     }
 
-    // Validate file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
       setErrors((prev) => ({
         ...prev,
@@ -123,7 +111,6 @@ export function SubmitProposalModal({
     setImageFile(file);
     setErrors((prev) => ({ ...prev, imageUrl: undefined }));
 
-    // Create preview URL
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result && typeof e.target.result === "string") {
@@ -160,7 +147,6 @@ export function SubmitProposalModal({
 
     try {
       await onSubmit(formData);
-      // Reset form
       setFormData({
         name: "",
         ticker: "",
@@ -200,7 +186,6 @@ export function SubmitProposalModal({
           transition={{ duration: 0.2 }}
           className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-3xl border border-white/20 bg-gradient-to-br from-gray-900/95 to-black/95 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl"
         >
-          {/* Header */}
           <div className="sticky top-0 z-10 border-b border-white/20 bg-gradient-to-r from-white/10 to-gray-800/20 p-6 backdrop-blur-xl">
             <div className="flex items-center justify-between">
               <div>
@@ -227,9 +212,7 @@ export function SubmitProposalModal({
             </div>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6 p-6">
-            {/* Name & Ticker Row */}
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-300">
@@ -282,8 +265,6 @@ export function SubmitProposalModal({
                 </div>
               </div>
             </div>
-
-            {/* Description */}
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
                 Description <span className="text-red-400">*</span>
@@ -311,8 +292,6 @@ export function SubmitProposalModal({
                 {formData.description.length}/280 characters
               </div>
             </div>
-
-            {/* Image Upload */}
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
                 Meme Image <span className="text-red-400">*</span>
@@ -406,14 +385,12 @@ export function SubmitProposalModal({
               )}
             </div>
 
-            {/* Submit Error */}
             {errors.submit && (
               <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
                 <p className="text-sm text-red-400">{errors.submit}</p>
               </div>
             )}
 
-            {/* Action Buttons */}
             <div className="flex gap-4 pt-4">
               <button
                 type="button"

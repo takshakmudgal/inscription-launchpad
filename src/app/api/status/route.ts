@@ -37,14 +37,10 @@ interface SystemStatus {
   };
 }
 
-// GET /api/status - Get system status
 export async function GET(): Promise<NextResponse<ApiResponse<SystemStatus>>> {
   try {
-    // Get inscription engine status
     const engineStatus = await inscriptionEngine.getStatus();
     const unisatStatus = unisatMonitor.getStatus();
-
-    // Test database connection and get stats
     let dbConnected = true;
     let totalProposals = 0;
     let activeProposals = 0;
@@ -76,7 +72,6 @@ export async function GET(): Promise<NextResponse<ApiResponse<SystemStatus>>> {
       dbConnected = false;
     }
 
-    // Test Bitcoin/Esplora connection
     let esploraConnected = true;
     let currentBlockHeight: number | undefined;
 
@@ -118,15 +113,12 @@ export async function GET(): Promise<NextResponse<ApiResponse<SystemStatus>>> {
   }
 }
 
-// POST /api/status/trigger - Manually trigger inscription engine (admin only)
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<string>>> {
   try {
-    // Simple authentication check (in production, use proper auth)
     const cronSecret = env.CRON_SECRET;
     const authHeader = request.headers.get("authorization");
-
     if (cronSecret && (!authHeader || authHeader !== `Bearer ${cronSecret}`)) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
@@ -134,7 +126,6 @@ export async function POST(
       );
     }
 
-    // Trigger inscription engine manually
     await inscriptionEngine.triggerManually();
 
     return NextResponse.json({

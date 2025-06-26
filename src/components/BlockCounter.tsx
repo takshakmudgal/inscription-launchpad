@@ -17,7 +17,6 @@ function formatTime(seconds: number): string {
   return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
-// Animated lightning bolts
 function LightningBolts() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -49,7 +48,6 @@ function LightningBolts() {
   );
 }
 
-// Pulsing energy rings
 function EnergyRings() {
   return (
     <div className="pointer-events-none absolute inset-0">
@@ -78,7 +76,7 @@ export function BlockCounter() {
     currentBlock: 4546377,
     lastBlock: 4546376,
     nextBlock: 4546378,
-    timeToNext: 600, // 10 minutes in seconds
+    timeToNext: 600,
     avgBlockTime: 600,
   });
 
@@ -86,7 +84,6 @@ export function BlockCounter() {
   const [isNewBlock, setIsNewBlock] = useState(false);
 
   useEffect(() => {
-    // Fetch latest block data
     const fetchBlockData = async () => {
       try {
         interface BlockApiResponse {
@@ -123,17 +120,15 @@ export function BlockCounter() {
     };
 
     void fetchBlockData();
-    const interval = setInterval(() => void fetchBlockData(), 30000); // Update every 30 seconds
+    const interval = setInterval(() => void fetchBlockData(), 30000);
 
     return () => clearInterval(interval);
   }, [blockData.currentBlock]);
 
   useEffect(() => {
-    // Countdown timer
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
-          // Block should be mined, refresh data
           return blockData.avgBlockTime;
         }
         return prev - 1;
@@ -154,8 +149,6 @@ export function BlockCounter() {
   return (
     <div className="relative mx-auto max-w-6xl">
       <LightningBolts />
-
-      {/* New Block Celebration */}
       <AnimatePresence>
         {isNewBlock && (
           <motion.div
@@ -190,7 +183,6 @@ export function BlockCounter() {
       </AnimatePresence>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Current Block */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9, rotateY: -15 }}
           animate={{ opacity: 1, scale: 1, rotateY: 0 }}
@@ -250,8 +242,6 @@ export function BlockCounter() {
           >
             Last mined: {blockData.lastBlock.toLocaleString()}
           </motion.div>
-
-          {/* Floating particles */}
           <div className="pointer-events-none absolute inset-0">
             {Array.from({ length: 5 }, (_, i) => (
               <motion.div
@@ -271,8 +261,6 @@ export function BlockCounter() {
             ))}
           </div>
         </motion.div>
-
-        {/* Next Block Countdown */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9, rotateY: -15 }}
           animate={{ opacity: 1, scale: 1, rotateY: 0 }}
@@ -290,7 +278,6 @@ export function BlockCounter() {
           style={{ boxShadow: "0 0px 0px rgba(255,255,255,0)" }}
           className="group relative overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br from-white/10 to-gray-800/30 p-8 text-center ring-1 ring-white/10 backdrop-blur-sm hover:border-white/30 hover:from-white/15"
         >
-          {/* Animated background gradient */}
           <motion.div
             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
             animate={{
@@ -353,7 +340,6 @@ export function BlockCounter() {
                     backgroundSize: "200% 200%",
                   }}
                 />
-                {/* Glowing effect */}
                 <motion.div
                   className="absolute inset-0 bg-gradient-to-r from-white via-gray-300 to-zinc-400 opacity-50 blur-sm"
                   animate={{
@@ -380,8 +366,6 @@ export function BlockCounter() {
           >
             Avg: ~{Math.floor(blockData.avgBlockTime / 60)} minutes per block
           </motion.div>
-
-          {/* Pulse effect */}
           <motion.div
             className="absolute inset-0 rounded-2xl border border-white/20"
             animate={{
@@ -395,7 +379,6 @@ export function BlockCounter() {
           />
         </motion.div>
 
-        {/* Next Block */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9, rotateY: -15 }}
           animate={{ opacity: 1, scale: 1, rotateY: 0 }}
@@ -451,8 +434,6 @@ export function BlockCounter() {
           >
             ETA: ~{formatTime(timeRemaining)}
           </motion.div>
-
-          {/* Countdown particles */}
           <div className="pointer-events-none absolute inset-0">
             {Array.from({ length: 3 }, (_, i) => (
               <motion.div
@@ -477,8 +458,6 @@ export function BlockCounter() {
           </div>
         </motion.div>
       </div>
-
-      {/* Winner Selection Info */}
       <motion.div
         initial={{ opacity: 0, y: 30, rotateX: -10 }}
         animate={{ opacity: 1, y: 0, rotateX: 0 }}
@@ -491,7 +470,6 @@ export function BlockCounter() {
         style={{ boxShadow: "0 0px 0px rgba(255,255,255,0)" }}
         className="group relative mt-8 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r from-white/5 to-gray-900/20 p-6 text-center backdrop-blur-sm hover:border-white/20 hover:from-white/10"
       >
-        {/* Animated background */}
         <motion.div
           className="absolute inset-0 bg-gradient-to-r from-transparent via-white/3 to-transparent"
           animate={{
@@ -544,8 +522,6 @@ export function BlockCounter() {
           the winner and permanently inscribed on the Bitcoin blockchain. The
           selection happens automatically based on the blockchain timestamp.
         </motion.p>
-
-        {/* Floating icons */}
         <div className="pointer-events-none absolute inset-0">
           {["🏆", "⛏️", "📝"].map((icon, i) => (
             <motion.div

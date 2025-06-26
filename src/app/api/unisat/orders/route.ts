@@ -22,7 +22,6 @@ interface OrderListItem {
   createdAt: string;
 }
 
-// GET /api/unisat/orders - List all inscription orders
 export async function GET(
   request: NextRequest,
 ): Promise<
@@ -34,8 +33,6 @@ export async function GET(
     const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 100);
     const offset = (page - 1) * limit;
     const status = searchParams.get("status");
-
-    // Build query based on whether we need filtering
     const results = status
       ? await db
           .select({
@@ -83,7 +80,6 @@ export async function GET(
           .limit(limit)
           .offset(offset);
 
-    // Transform the results
     const orders: OrderListItem[] = results.map((row) => ({
       id: row.id,
       proposalId: row.proposalId,
@@ -101,7 +97,6 @@ export async function GET(
       createdAt: row.createdAt.toISOString(),
     }));
 
-    // Get total count for pagination
     const totalResult = await db
       .select({ count: inscriptions.id })
       .from(inscriptions);

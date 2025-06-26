@@ -6,7 +6,6 @@ import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { ApiResponse, Proposal } from "~/types";
 
-// Validation schema for proposal submission
 const proposalSchema = z.object({
   name: z.string().min(1).max(50),
   ticker: z.string().min(1).max(10).toUpperCase(),
@@ -19,7 +18,6 @@ const proposalSchema = z.object({
   walletAddress: z.string().optional(),
 });
 
-// GET /api/proposals - Fetch all proposals with pagination and sorting
 export async function GET(
   request: NextRequest,
 ): Promise<
@@ -29,13 +27,10 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") ?? "1");
     const limit = parseInt(searchParams.get("limit") ?? "20");
-    const sortBy = searchParams.get("sortBy") ?? "totalVotes"; // totalVotes, createdAt, name
-    const order = searchParams.get("order") ?? "desc"; // asc, desc
-    const status = searchParams.get("status") ?? "active"; // active, inscribed, rejected, all
-
+    const sortBy = searchParams.get("sortBy") ?? "totalVotes";
+    const order = searchParams.get("order") ?? "desc"; 
+    const status = searchParams.get("status") ?? "active";
     const offset = (page - 1) * limit;
-
-    // Build base query
     const baseQuery = db
       .select({
         id: proposals.id,
@@ -52,7 +47,6 @@ export async function GET(
         votesDown: proposals.votesDown,
         totalVotes: proposals.totalVotes,
         status: proposals.status,
-        // New automatic inscription timing fields
         firstTimeAsLeader: proposals.firstTimeAsLeader,
         leaderStartBlock: proposals.leaderStartBlock,
         leaderboardMinBlocks: proposals.leaderboardMinBlocks,
@@ -65,13 +59,12 @@ export async function GET(
       .from(proposals)
       .leftJoin(users, eq(proposals.submittedBy, users.id));
 
-    // Build complete query with filters, sorting, and pagination
     let results;
 
     if (status !== "all") {
       const statusCondition =
         status === "active"
-          ? sql`${proposals.status} IN ('active', 'leader')` // Active excludes expired
+          ? sql`${proposals.status} IN ('active', 'leader')`
           : eq(
               proposals.status,
               status as "inscribed" | "rejected" | "expired",
@@ -154,7 +147,6 @@ export async function GET(
       }
     }
 
-    // Get total count
     const totalResult =
       status !== "all"
         ? await db
@@ -162,7 +154,7 @@ export async function GET(
             .from(proposals)
             .where(
               status === "active"
-                ? sql`${proposals.status} IN ('active', 'leader')` // Active excludes expired
+                ? sql`${proposals.status} IN ('active', 'leader')`
                 : eq(
                     proposals.status,
                     status as "inscribed" | "rejected" | "expired",
@@ -172,7 +164,6 @@ export async function GET(
 
     const total = totalResult[0]?.count ?? 0;
 
-    // Transform results
     const transformedProposals: Proposal[] = results.map((row) => ({
       id: row.id,
       name: row.name,
@@ -188,7 +179,6 @@ export async function GET(
       votesDown: row.votesDown,
       totalVotes: row.totalVotes,
       status: row.status,
-      // New automatic inscription timing fields
       firstTimeAsLeader: row.firstTimeAsLeader?.toISOString(),
       leaderStartBlock: row.leaderStartBlock ?? undefined,
       leaderboardMinBlocks: row.leaderboardMinBlocks,
@@ -222,7 +212,6 @@ export async function GET(
   }
 }
 
-// POST /api/proposals - Create new proposal
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<Proposal>>> {
@@ -230,7 +219,6 @@ export async function POST(
     const body = (await request.json()) as unknown;
     const validatedData = proposalSchema.parse(body);
 
-    // Check if ticker already exists
     const existingProposal = await db
       .select()
       .from(proposals)
@@ -244,7 +232,6 @@ export async function POST(
       );
     }
 
-    // Find or create user if wallet address provided
     let userId: number | undefined;
     if (validatedData.walletAddress) {
       const existingUser = await db
@@ -266,7 +253,6 @@ export async function POST(
       }
     }
 
-    // Create proposal
     const newProposal = await db
       .insert(proposals)
       .values({
@@ -284,7 +270,6 @@ export async function POST(
 
     const created = newProposal[0]!;
 
-    // Get submitter details if available
     let submitterDetails;
     if (userId) {
       const submitter = await db
@@ -324,7 +309,6 @@ export async function POST(
       votesDown: created.votesDown,
       totalVotes: created.totalVotes,
       status: created.status,
-      // New automatic inscription timing fields
       firstTimeAsLeader: created.firstTimeAsLeader?.toISOString(),
       leaderStartBlock: created.leaderStartBlock ?? undefined,
       leaderboardMinBlocks: created.leaderboardMinBlocks,
@@ -359,7 +343,6 @@ export async function POST(
   }
 }
 
-// PATCH /api/proposals - Update proposal status
 export async function PATCH(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<{ success: boolean }>>> {
@@ -370,7 +353,6 @@ export async function PATCH(
     };
 
     if (body.action === "mark_inscribed" && body.orderId) {
-      // Find the inscription with this order ID
       const inscription = await db
         .select()
         .from(inscriptions)
@@ -386,7 +368,6 @@ export async function PATCH(
 
       const proposalId = inscription[0]!.proposalId;
 
-      // Update the proposal status to inscribed
       await db
         .update(proposals)
         .set({

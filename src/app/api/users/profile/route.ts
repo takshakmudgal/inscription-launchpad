@@ -26,7 +26,6 @@ interface UserProfileResponse {
   updatedAt: string;
 }
 
-// GET /api/users/profile?walletAddress=... - Get user profile
 export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<UserProfileResponse>>> {
@@ -41,7 +40,6 @@ export async function GET(
       );
     }
 
-    // Find user by wallet address
     const userRecords = await db
       .select()
       .from(users)
@@ -82,7 +80,6 @@ export async function GET(
   }
 }
 
-// POST /api/users/profile - Create or update user profile
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<UserProfileResponse>>> {
@@ -97,7 +94,6 @@ export async function POST(
       );
     }
 
-    // Validate username uniqueness (exclude current user if updating)
     const existingUsers = await db
       .select()
       .from(users)
@@ -113,7 +109,6 @@ export async function POST(
       );
     }
 
-    // Check if user already exists
     const userRecords = await db
       .select()
       .from(users)
@@ -123,7 +118,6 @@ export async function POST(
     let user;
 
     if (userRecords.length === 0) {
-      // Create new user
       const insertResult = await db
         .insert(users)
         .values({
@@ -138,7 +132,6 @@ export async function POST(
 
       user = insertResult[0]!;
     } else {
-      // Update existing user
       const updateResult = await db
         .update(users)
         .set({

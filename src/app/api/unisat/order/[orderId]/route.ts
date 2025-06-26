@@ -13,7 +13,6 @@ interface OrderStatusData {
   }>;
 }
 
-// GET /api/unisat/order/[orderId] - Check order status
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ orderId: string }> },

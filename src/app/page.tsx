@@ -64,12 +64,10 @@ export default function HomePage() {
   const { notifications, addNotification, removeNotification } =
     useNotifications();
 
-  // Background order monitoring
   useBackgroundOrderMonitor({
     enabled: isConnected,
-    interval: 60000, // Check every minute
+    interval: 60000,
     onOrderComplete: (orderId, status) => {
-      // Refresh both active and inscribed proposals when inscription completes
       refreshAllData();
 
       addNotification({
@@ -93,10 +91,8 @@ export default function HomePage() {
     setMounted(true);
   }, []);
 
-  // Show profile modal for new users
   useEffect(() => {
     if (isConnected && !hasCompleteProfile && mounted) {
-      // Give a small delay to let wallet connection complete
       const timer = setTimeout(() => {
         setIsProfileModalOpen(true);
       }, 1000);
@@ -106,7 +102,6 @@ export default function HomePage() {
 
   const fetchProposals = async () => {
     try {
-      // Fetch all non-inscribed proposals (active, leader, inscribing)
       const statuses = ["active", "leader", "inscribing"];
       const allProposals: Proposal[] = [];
 
@@ -144,7 +139,6 @@ export default function HomePage() {
 
   const fetchInscribedProposals = async (): Promise<Proposal[]> => {
     try {
-      // Fetch inscribed proposals separately
       const url = `/api/proposals?status=inscribed&t=${Date.now()}`;
       console.log("🔍 Fetching inscribed proposals from:", url);
       const response = await fetch(url, {
@@ -174,14 +168,10 @@ export default function HomePage() {
     return [];
   };
 
-  // Add state for inscribed proposals
   const [inscribedProposals, setInscribedProposals] = useState<Proposal[]>([]);
 
   useEffect(() => {
-    // Initial data fetch
     refreshAllData();
-
-    // Fetch current block
     fetch("/api/blocks/latest")
       .then((res) => res.json())
       .then((data: ApiResponse<BlockResponse>) => {
@@ -190,22 +180,15 @@ export default function HomePage() {
         }
       })
       .catch(console.error);
-
-    // Set up periodic refresh every 30 seconds to keep data fresh
     const refreshInterval = setInterval(refreshAllData, 30000);
 
     return () => clearInterval(refreshInterval);
   }, []);
 
-  // Centralized refresh function for better state management
   const refreshAllData = async () => {
     console.log("🔄 Refreshing all proposal data...");
-
-    // Clear existing state first to force UI refresh
     setProposals([]);
     setInscribedProposals([]);
-
-    // Force reload from server with strong cache busting
     const timestamp = Date.now();
     await Promise.all([
       fetchProposals(),
@@ -227,7 +210,6 @@ export default function HomePage() {
       return;
     }
 
-    // Require complete profile for proposal submission
     if (!hasCompleteProfile) {
       setIsProfileModalOpen(true);
       addNotification({
@@ -246,14 +228,13 @@ export default function HomePage() {
         body: JSON.stringify({
           ...proposal,
           walletAddress,
-          submittedBy: userProfile?.id, // Use real user ID
+          submittedBy: userProfile?.id,
         }),
       });
 
       if (response.ok) {
         const data = (await response.json()) as ApiResponse<Proposal>;
         if (data.success && data.data) {
-          // Refresh data instead of manually updating state to ensure consistency
           await refreshAllData();
           addNotification({
             type: "success",
@@ -289,7 +270,6 @@ export default function HomePage() {
       return;
     }
 
-    // Encourage profile completion for voting (but don't block it)
     if (!hasCompleteProfile) {
       addNotification({
         type: "info",
@@ -308,7 +288,7 @@ export default function HomePage() {
           proposalId,
           voteType,
           walletAddress,
-          userId: userProfile?.id, // Include user ID if available
+          userId: userProfile?.id,
         }),
       });
 
@@ -317,7 +297,6 @@ export default function HomePage() {
           success: boolean;
         }>;
         if (data.success) {
-          // Refresh all data to get updated vote counts and status
           await refreshAllData();
 
           addNotification({
@@ -355,7 +334,6 @@ export default function HomePage() {
     proposalTicker: string,
     receiveAddress: string,
   ) => {
-    // Create a minimal proposal object for the modal
     const proposal: Proposal = {
       id: proposalId,
       name: proposalName,
@@ -367,7 +345,7 @@ export default function HomePage() {
       votesDown: 0,
       totalVotes: 0,
       status: "active",
-      leaderboardMinBlocks: 2, // Default value
+      leaderboardMinBlocks: 2,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -409,7 +387,6 @@ export default function HomePage() {
   };
 
   const getFilteredProposals = () => {
-    // Filter and deduplicate active proposals
     const activeProposals = proposals
       .filter((p) => p.status === "active" || p.status === "leader")
       .filter(
@@ -480,11 +457,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
-      {/* Header */}
       <header className="relative border-b border-white/10 bg-black/50 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between">
-            {/* Logo */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -501,7 +476,6 @@ export default function HomePage() {
               </div>
             </motion.div>
 
-            {/* Stats */}
             <div className="hidden items-center gap-8 md:flex">
               <div className="text-center">
                 <div className="text-lg font-bold text-white">
@@ -537,7 +511,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Manual Refresh & Wallet & Submit Button */}
             <div className="flex items-center gap-3">
               <button
                 onClick={refreshAllData}
@@ -595,7 +568,6 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section */}
       <section className="relative px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
           <motion.h2
@@ -620,7 +592,6 @@ export default function HomePage() {
             inscribed on Bitcoin forever.
           </motion.p>
 
-          {/* Call to Action */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -652,24 +623,20 @@ export default function HomePage() {
           </motion.div>
         </div>
 
-        {/* Background decoration */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute -top-40 -right-32 h-80 w-80 rounded-full bg-purple-500/20 blur-3xl" />
           <div className="absolute -bottom-40 -left-32 h-80 w-80 rounded-full bg-pink-500/20 blur-3xl" />
         </div>
       </section>
 
-      {/* SECTION 1: Active/Leader Proposals */}
       <section id="proposals" className="px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          {/* Section Header */}
           <div className="mb-12 text-center">
             <div className="mb-4 flex items-center justify-center gap-4">
               <h3 className="text-3xl font-bold text-white">
                 🏆 Meme Leaderboard
               </h3>
 
-              {/* Live System Status */}
               <div className="hidden items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-2 lg:flex">
                 <div className="flex items-center gap-2 text-xs">
                   <div className="h-2 w-2 animate-pulse rounded-full bg-green-400"></div>
@@ -715,7 +682,6 @@ export default function HomePage() {
               Bitcoin!
             </p>
 
-            {/* Mobile System Status */}
             <div className="mt-4 flex items-center justify-center gap-4 text-xs lg:hidden">
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-400"></div>
@@ -746,7 +712,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Filter Tabs */}
           <div className="mb-6 flex justify-center sm:mb-8">
             <div className="flex rounded-xl bg-white/5 p-1 backdrop-blur-sm">
               {[
@@ -774,7 +739,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Active/Leader Proposals Grid */}
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -822,7 +786,6 @@ export default function HomePage() {
             </motion.div>
           </AnimatePresence>
 
-          {/* Empty State for Active Proposals */}
           {getFilteredProposals().length === 0 && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -853,11 +816,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SECTION 2: Processing (Inscribing) Proposals */}
       {getProcessingProposals().length > 0 && (
         <section className="bg-gradient-to-r from-blue-900/10 to-purple-900/10 px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
-            {/* Section Header */}
             <div className="mb-12 text-center">
               <div className="mb-4 flex items-center justify-center gap-4">
                 <h3 className="text-3xl font-bold text-white">
@@ -876,7 +837,6 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Processing Proposals Grid */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {getProcessingProposals().map((proposal, index) => (
                 <motion.div
@@ -918,11 +878,9 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* SECTION 3: Inscribed Proposals */}
       {getInscribedProposals().length > 0 && (
         <section className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
-            {/* Section Header */}
             <div className="mb-12 text-center">
               <div className="mb-4 flex items-center justify-center gap-4">
                 <h3 className="text-3xl font-bold text-white">
@@ -941,7 +899,6 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Inscribed Proposals Grid */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {getInscribedProposals().map((proposal, index) => (
                 <motion.div
@@ -983,7 +940,6 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Modals */}
       <SubmitProposalModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -1011,10 +967,7 @@ export default function HomePage() {
         />
       )}
 
-      {/* Active Orders Widget */}
       {isConnected && <ActiveOrdersWidget onResumeOrder={handleResumeOrder} />}
-
-      {/* User Profile Modal */}
       {walletAddress && (
         <UserProfileModal
           isOpen={isProfileModalOpen}
@@ -1024,8 +977,6 @@ export default function HomePage() {
           isRequired={!hasCompleteProfile}
         />
       )}
-
-      {/* Order Notifications */}
       <OrderNotification
         notifications={notifications}
         onRemove={removeNotification}

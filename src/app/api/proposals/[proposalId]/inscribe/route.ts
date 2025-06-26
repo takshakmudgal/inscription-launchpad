@@ -5,7 +5,6 @@ import { proposals } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import type { ApiResponse } from "~/types";
 
-// PATCH /api/proposals/[proposalId]/inscribe - Mark proposal as inscribed
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ proposalId: string }> },
@@ -21,7 +20,6 @@ export async function PATCH(
       );
     }
 
-    // Update proposal status to inscribed
     await db
       .update(proposals)
       .set({

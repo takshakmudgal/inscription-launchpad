@@ -16,7 +16,7 @@ const eslintConfig = [
   ...compat.config({
     extends: ["next/core-web-vitals", "next/typescript"],
     rules: {
-      "@next/next/no-img-element": "off", // We intentionally use img tags to avoid next/image configuration issues
+      "@next/next/no-img-element": "off",
     },
   }),
   {

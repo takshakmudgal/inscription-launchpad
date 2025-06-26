@@ -6,22 +6,18 @@ import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { ApiResponse, Vote } from "~/types";
 
-// Validation schema for vote submission
 const voteSchema = z.object({
   proposalId: z.number().int().positive(),
   voteType: z.enum(["up", "down"]),
-  walletAddress: z.string().min(1), // Required for voting
+  walletAddress: z.string().min(1),
 });
 
-// POST /api/vote - Submit a vote
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<Vote>>> {
   try {
     const body = (await request.json()) as unknown;
     const validatedData = voteSchema.parse(body);
-
-    // Check if proposal exists and is active
     const proposal = await db
       .select()
       .from(proposals)
@@ -42,7 +38,6 @@ export async function POST(
       );
     }
 
-    // Find or create user
     const user = await db
       .select()
       .from(users)
@@ -62,7 +57,6 @@ export async function POST(
       userId = user[0]!.id;
     }
 
-    // Check if user has already voted on this proposal
     const existingVote = await db
       .select()
       .from(votes)
@@ -81,7 +75,6 @@ export async function POST(
       );
     }
 
-    // Create the vote
     const newVote = await db
       .insert(votes)
       .values({
@@ -93,7 +86,6 @@ export async function POST(
 
     const vote = newVote[0]!;
 
-    // Update proposal vote counts
     const voteIncrement = validatedData.voteType === "up" ? 1 : 0;
     const downVoteIncrement = validatedData.voteType === "down" ? 1 : 0;
 
@@ -141,7 +133,6 @@ export async function POST(
   }
 }
 
-// GET /api/vote - Get user's votes (optional, for user profile)
 export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<Vote[]>>> {
@@ -157,7 +148,6 @@ export async function GET(
       );
     }
 
-    // Find user
     const user = await db
       .select()
       .from(users)
@@ -172,8 +162,6 @@ export async function GET(
     }
 
     const userId = user[0]!.id;
-
-    // Build and execute query with conditional filtering
     const userVotes = proposalId
       ? await db
           .select()

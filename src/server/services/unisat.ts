@@ -90,17 +90,12 @@ export class UnisatService {
 
     this.network = env.BITCOIN_NETWORK;
     this.feeRate = parseInt(env.INSCRIPTION_FEE_RATE);
-
-    // Fixed UniSat API endpoints
     this.baseUrl =
       this.network === "testnet"
         ? "https://open-api-testnet.unisat.io"
         : "https://open-api.unisat.io";
   }
 
-  /**
-   * Generate inscription payload JSON (same as before)
-   */
   generateInscriptionPayload(
     proposal: Proposal,
     blockHeight: number,
@@ -121,9 +116,6 @@ export class UnisatService {
     };
   }
 
-  /**
-   * Create inscription order using UniSat API
-   */
   async createInscriptionOrder(
     proposal: Proposal,
     blockHeight: number,
@@ -131,7 +123,6 @@ export class UnisatService {
   ): Promise<{ orderId: string; payAddress: string; amount: number }> {
     const payload = this.generateInscriptionPayload(proposal, blockHeight);
 
-    // Convert JSON payload to data URL
     const jsonString = JSON.stringify(payload, null, 2);
     const dataURL = `data:application/json;base64,${Buffer.from(jsonString).toString("base64")}`;
 
@@ -140,7 +131,7 @@ export class UnisatService {
     const requestBody: UnisatInscriptionRequest = {
       receiveAddress,
       feeRate: this.feeRate,
-      outputValue: 546, // Standard output value for inscriptions
+      outputValue: 546,
       files: [
         {
           filename,
@@ -186,12 +177,8 @@ export class UnisatService {
     }
   }
 
-  /**
-   * Get order status using correct endpoint
-   */
   async getOrderStatus(orderId: string): Promise<UnisatOrderStatus["data"]> {
     try {
-      // Use the correct endpoint for getting order by orderId
       const response = await fetch(
         `${this.baseUrl}/v2/inscribe/order/${orderId}`,
         {
@@ -220,15 +207,12 @@ export class UnisatService {
     }
   }
 
-  /**
-   * Wait for order completion and return inscription details
-   */
   async waitForInscriptionCompletion(
     orderId: string,
-    maxWaitTime = 3600000, // 1 hour default
+    maxWaitTime = 3600000, 
   ): Promise<{ txid: string; inscriptionId?: string }> {
     const startTime = Date.now();
-    const pollInterval = 30000; // 30 seconds
+    const pollInterval = 30000; 
 
     while (Date.now() - startTime < maxWaitTime) {
       try {
@@ -248,11 +232,9 @@ export class UnisatService {
           throw new Error("UniSat inscription order was canceled");
         }
 
-        // Still pending, wait and check again
         await new Promise((resolve) => setTimeout(resolve, pollInterval));
       } catch (error) {
         console.error("Error checking inscription status:", error);
-        // Continue polling unless it's a critical error
         await new Promise((resolve) => setTimeout(resolve, pollInterval));
       }
     }
@@ -260,9 +242,6 @@ export class UnisatService {
     throw new Error("Inscription order timed out");
   }
 
-  /**
-   * Main inscription method for automatic processing
-   */
   async inscribe(
     proposal: Proposal,
     blockHeight: number,
@@ -278,8 +257,6 @@ export class UnisatService {
       `🎯 Creating UniSat inscription for proposal ${proposal.id} (${proposal.ticker}) at block ${blockHeight}`,
     );
 
-    // For automatic processing, we need a default receive address
-    // This should be configured as an environment variable or derived from a wallet
     const defaultReceiveAddress = receiveAddress ?? env.UNISAT_RECEIVE_ADDRESS;
 
     if (!defaultReceiveAddress) {
@@ -287,7 +264,6 @@ export class UnisatService {
     }
 
     try {
-      // Create the inscription order
       const order = await this.createInscriptionOrder(
         proposal,
         blockHeight,
@@ -298,15 +274,11 @@ export class UnisatService {
         `📦 Order created: ${order.orderId}, Payment: ${order.amount} sats to ${order.payAddress}`,
       );
 
-      // For automatic processing, we would need to handle payment here
-      // This might require integration with a wallet or payment system
       console.log("⚠️  Manual payment required to complete inscription");
       console.log(`💰 Send ${order.amount} sats to ${order.payAddress}`);
 
-      // Return order information - in a production system, you might want to
-      // store this order and check status later via a separate process
       return {
-        txid: "pending", // Will be updated when order is completed
+        txid: "pending", 
         inscriptionId: undefined,
         orderId: order.orderId,
         payAddress: order.payAddress,

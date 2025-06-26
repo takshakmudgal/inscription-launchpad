@@ -12,29 +12,27 @@ import {
 
 export const createTable = pgTableCreator((name) => `bitmemes_${name}`);
 
-// Enums
 export const voteTypeEnum = pgEnum("vote_type", ["up", "down"]);
 export const proposalStatusEnum = pgEnum("proposal_status", [
   "active",
-  "leader", // Proposal is #1 but waiting for minimum blocks
-  "inscribing", // Payment sent, waiting for confirmation
-  "inscribed", // Successfully inscribed and confirmed
+  "leader",
+  "inscribing",
+  "inscribed",
   "rejected",
-  "expired", // New status for proposals that expired without inscription
+  "expired",
 ]);
 
-// Users table
 export const users = createTable(
   "user",
   {
     id: integer().primaryKey().generatedByDefaultAsIdentity(),
-    walletAddress: varchar("wallet_address", { length: 62 }), // Bitcoin addresses can be up to 62 chars
-    twitterId: varchar("twitter_id", { length: 50 }), // Legacy field for Twitter OAuth
+    walletAddress: varchar("wallet_address", { length: 62 }),
+    twitterId: varchar("twitter_id", { length: 50 }), 
     username: varchar("username", { length: 50 }),
     email: varchar("email", { length: 255 }),
-    twitter: varchar("twitter", { length: 50 }), // Twitter handle
-    telegram: varchar("telegram", { length: 50 }), // Telegram username
-    bio: text("bio"), // User bio/description
+    twitter: varchar("twitter", { length: 50 }),
+    telegram: varchar("telegram", { length: 50 }),
+    bio: text("bio"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -50,7 +48,6 @@ export const users = createTable(
   ],
 );
 
-// Proposals table
 export const proposals = createTable(
   "proposal",
   {
@@ -68,15 +65,14 @@ export const proposals = createTable(
     votesDown: integer("votes_down").default(0).notNull(),
     totalVotes: integer("total_votes").default(0).notNull(),
     status: proposalStatusEnum("status").default("active").notNull(),
-    // Automatic inscription timing fields
     firstTimeAsLeader: timestamp("first_time_as_leader", {
       withTimezone: true,
-    }), // When this proposal first became #1
-    leaderStartBlock: integer("leader_start_block"), // Block height when this proposal first became #1
+    }),
+    leaderStartBlock: integer("leader_start_block"),
     leaderboardMinBlocks: integer("leaderboard_min_blocks")
       .default(2)
-      .notNull(), // Minimum blocks to stay as leader before inscription
-    expirationBlock: integer("expiration_block"), // Block at which this proposal expires if not inscribed
+      .notNull(),
+    expirationBlock: integer("expiration_block"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -94,7 +90,6 @@ export const proposals = createTable(
   ],
 );
 
-// Votes table
 export const votes = createTable(
   "vote",
   {
@@ -117,7 +112,6 @@ export const votes = createTable(
   ],
 );
 
-// Inscriptions table
 export const inscriptions = createTable(
   "inscription",
   {
@@ -132,12 +126,11 @@ export const inscriptions = createTable(
     inscriptionUrl: text("inscription_url"),
     feeRate: integer("fee_rate"),
     totalFees: bigint("total_fees", { mode: "number" }),
-    metadata: text("metadata"), // JSON string of the inscribed data
-    // UniSat specific fields
-    unisatOrderId: varchar("unisat_order_id", { length: 100 }), // UniSat order ID
-    orderStatus: varchar("order_status", { length: 50 }), // pending, minted, sent, canceled
-    paymentAddress: text("payment_address"), // UniSat payment address
-    paymentAmount: bigint("payment_amount", { mode: "number" }), // Amount to pay in satoshis - using bigint for large values
+    metadata: text("metadata"),
+    unisatOrderId: varchar("unisat_order_id", { length: 100 }),
+    orderStatus: varchar("order_status", { length: 50 }), 
+    paymentAddress: text("payment_address"),
+    paymentAmount: bigint("payment_amount", { mode: "number" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -150,7 +143,6 @@ export const inscriptions = createTable(
   ],
 );
 
-// Block tracking table
 export const blockTracker = createTable("block_tracker", {
   id: integer().primaryKey().generatedByDefaultAsIdentity(),
   lastProcessedBlock: integer("last_processed_block").notNull(),

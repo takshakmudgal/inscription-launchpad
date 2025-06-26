@@ -19,8 +19,6 @@ export function WalletConnectModal({
   const { setWalletAddress } = useWallet();
 
   const validateBitcoinAddress = (address: string): boolean => {
-    // Basic Bitcoin address validation (simplified)
-    // Supports Legacy (1...), SegWit (3...), and Bech32 (bc1...)
     const legacyRegex = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/;
     const segwitRegex = /^3[a-km-zA-HJ-NP-Z1-9]{25,34}$/;
     const bech32Regex = /^(bc1|tb1)[a-z0-9]{39,59}$/;
@@ -47,10 +45,7 @@ export function WalletConnectModal({
     setError("");
 
     try {
-      // Set the wallet address
       setWalletAddress(walletInput.trim());
-
-      // Close modal
       onClose();
       setWalletInput("");
     } catch (error) {
@@ -63,7 +58,7 @@ export function WalletConnectModal({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setWalletInput(e.target.value);
-    if (error) setError(""); // Clear error when user types
+    if (error) setError("");
   };
 
   if (!isOpen) return null;
@@ -88,7 +83,6 @@ export function WalletConnectModal({
           transition={{ duration: 0.2 }}
           className="w-full max-w-md rounded-2xl border border-white/20 bg-gradient-to-br from-gray-900/95 to-black/95 p-6 shadow-2xl backdrop-blur-xl"
         >
-          {/* Header */}
           <div className="mb-6 text-center">
             <div className="mb-3 flex justify-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-2xl shadow-lg">
@@ -101,7 +95,6 @@ export function WalletConnectModal({
             </p>
           </div>
 
-          {/* Input Form */}
           <div className="space-y-4">
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
@@ -120,15 +113,11 @@ export function WalletConnectModal({
                 addresses
               </p>
             </div>
-
-            {/* Error Message */}
             {error && (
               <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
                 {error}
               </div>
             )}
-
-            {/* Buttons */}
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
@@ -155,8 +144,6 @@ export function WalletConnectModal({
               </button>
             </div>
           </div>
-
-          {/* Info */}
           <div className="mt-6 rounded-xl bg-white/5 p-4">
             <h3 className="mb-2 flex items-center gap-2 text-sm font-medium text-white">
               <span>🔒</span>

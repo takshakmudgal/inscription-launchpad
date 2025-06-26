@@ -31,7 +31,6 @@ async function apiRequest<T>(
   return response.json() as Promise<ApiResponse<T>>;
 }
 
-// Proposals API
 export async function getProposals(
   page = 1,
   limit = 20,
@@ -59,7 +58,6 @@ export async function createProposal(
   });
 }
 
-// Voting API
 export async function submitVote(
   vote: VoteSubmission,
 ): Promise<ApiResponse<Vote>> {
@@ -81,7 +79,6 @@ export async function getUserVotes(
   return apiRequest(`/vote?${params}`);
 }
 
-// Leaderboard API
 export async function getLeaderboard(
   limit = 10,
   status = "active",
@@ -94,12 +91,9 @@ export async function getLeaderboard(
   return apiRequest(`/leaderboard?${params}`);
 }
 
-// Blocks API
 export async function getLatestBlock(): Promise<ApiResponse<BlockInfo>> {
   return apiRequest("/blocks/latest");
 }
-
-// Client-side helpers
 export class ApiError extends Error {
   constructor(
     message: string,

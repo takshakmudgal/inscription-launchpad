@@ -5,8 +5,6 @@ import { Inter } from "next/font/google";
 const inter = Inter({ subsets: ["latin"] });
 import { type Metadata } from "next";
 import { WalletProvider } from "~/components/providers";
-
-// Import background services initialization
 import "~/server/init";
 
 export const metadata: Metadata = {

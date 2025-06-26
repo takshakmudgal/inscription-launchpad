@@ -5,16 +5,14 @@ import { proposals, users } from "~/server/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import type { ApiResponse, LeaderboardEntry } from "~/types";
 
-// GET /api/leaderboard - Get top proposals ranked by votes
 export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<LeaderboardEntry[]>>> {
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") ?? "10");
-    const status = searchParams.get("status") ?? "active"; // active, inscribed, all
+    const status = searchParams.get("status") ?? "active";
 
-    // Build query based on status filter
     const baseQuery = db
       .select({
         id: proposals.id,
@@ -31,7 +29,6 @@ export async function GET(
         votesDown: proposals.votesDown,
         totalVotes: proposals.totalVotes,
         status: proposals.status,
-        // New automatic inscription timing fields
         firstTimeAsLeader: proposals.firstTimeAsLeader,
         leaderboardMinBlocks: proposals.leaderboardMinBlocks,
         expirationBlock: proposals.expirationBlock,
@@ -43,12 +40,11 @@ export async function GET(
       .from(proposals)
       .leftJoin(users, eq(proposals.submittedBy, users.id));
 
-    // Execute query with conditional filtering
     const results =
       status === "active"
         ? await baseQuery
             .where(
-              sql`${proposals.status} IN ('active', 'leader')`, // Active leaderboard excludes expired proposals
+              sql`${proposals.status} IN ('active', 'leader')`,
             )
             .orderBy(desc(proposals.totalVotes))
             .limit(limit)
@@ -59,11 +55,8 @@ export async function GET(
               .limit(limit)
           : await baseQuery.orderBy(desc(proposals.totalVotes)).limit(limit);
 
-    // Transform results to leaderboard entries
     const leaderboard: LeaderboardEntry[] = results.map((row, index) => {
-      // Calculate score (could be more sophisticated)
-      const score = row.votesUp - row.votesDown * 0.5; // Downvotes have less impact
-
+      const score = row.votesUp - row.votesDown * 0.5;
       return {
         id: row.id,
         name: row.name,
@@ -79,7 +72,6 @@ export async function GET(
         votesDown: row.votesDown,
         totalVotes: row.totalVotes,
         status: row.status,
-        // New automatic inscription timing fields
         firstTimeAsLeader: row.firstTimeAsLeader?.toISOString(),
         leaderboardMinBlocks: row.leaderboardMinBlocks,
         expirationBlock: row.expirationBlock ?? undefined,
@@ -96,7 +88,7 @@ export async function GET(
           : undefined,
         rank: index + 1,
         score: score,
-        isWinner: index === 0 && status === "active", // Top proposal is current winner
+        isWinner: index === 0 && status === "active",
       };
     });
 

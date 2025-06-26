@@ -15,7 +15,6 @@ interface InscriptionStatus {
   paymentAddress?: string;
 }
 
-// GET /api/proposals/[proposalId]/inscription-status - Check inscription status
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ proposalId: string }> },
@@ -31,7 +30,6 @@ export async function GET(
       );
     }
 
-    // Check for any inscriptions for this proposal
     const inscriptionRecords = await db
       .select()
       .from(inscriptions)

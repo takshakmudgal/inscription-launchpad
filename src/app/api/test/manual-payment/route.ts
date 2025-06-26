@@ -14,7 +14,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Get inscription record
     const inscription = await db
       .select()
       .from(inscriptions)
@@ -31,7 +30,6 @@ export async function POST(request: NextRequest) {
     const inscriptionRecord = inscription[0]!;
 
     if (forceComplete && inscriptionId && txid) {
-      // Manual completion with provided inscription ID and txid
       await db
         .update(inscriptions)
         .set({
@@ -41,7 +39,6 @@ export async function POST(request: NextRequest) {
         })
         .where(eq(inscriptions.id, inscriptionRecord.id));
 
-      // Update proposal to inscribed
       await db
         .update(proposals)
         .set({ status: "inscribed" })
@@ -56,7 +53,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (forceComplete) {
-      // Force complete without inscription ID (payment issue resolution)
       await db
         .update(inscriptions)
         .set({
@@ -64,7 +60,6 @@ export async function POST(request: NextRequest) {
         })
         .where(eq(inscriptions.id, inscriptionRecord.id));
 
-      // Reset proposal to active for retry
       await db
         .update(proposals)
         .set({ status: "active" })
@@ -76,7 +71,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Just return current status
     return NextResponse.json({
       success: true,
       inscription: inscriptionRecord,
@@ -93,7 +87,6 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get wallet status for manual payments
     const balance = await bitcoinWallet.getBalance();
     const address = await bitcoinWallet.getAddress();
     const utxos = await bitcoinWallet.getUTXOs();
@@ -104,7 +97,7 @@ export async function GET(request: NextRequest) {
         walletAddress: address,
         balance,
         utxosCount: utxos.length,
-        canPay: utxos.length > 0 && balance > 10000, // At least 10k sats
+        canPay: utxos.length > 0 && balance > 10000,
       },
     });
   } catch (error) {

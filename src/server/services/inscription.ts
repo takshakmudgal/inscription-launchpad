@@ -25,9 +25,6 @@ export class InscriptionService {
     this.unisatApiKey = env.UNISAT_API;
   }
 
-  /**
-   * Generate inscription payload JSON
-   */
   generateInscriptionPayload(
     proposal: Proposal,
     blockHeight: number,
@@ -48,9 +45,6 @@ export class InscriptionService {
     };
   }
 
-  /**
-   * Inscribe using ord CLI
-   */
   async inscribeWithOrd(
     payload: InscriptionPayload,
   ): Promise<{ txid: string; inscriptionId?: string }> {
@@ -62,33 +56,24 @@ export class InscriptionService {
     const tempFilePath = join(process.cwd(), "tmp", tempFileName);
 
     try {
-      // Ensure tmp directory exists
       await this.ensureTmpDirectory();
-
-      // Write payload to temporary file
       await writeFile(tempFilePath, JSON.stringify(payload, null, 2));
-
-      // Build ord command
       const networkFlag = this.network === "testnet" ? "--testnet" : "";
       const command = `ord ${networkFlag} wallet inscribe ${tempFilePath} --fee-rate ${this.feeRate}`;
 
       console.log(`Executing ord command: ${command}`);
 
-      // Execute ord command
       const { stdout, stderr } = await execAsync(command, {
         cwd: this.walletPath,
-        timeout: 300000, // 5 minute timeout
+        timeout: 300000,
       });
 
       if (stderr && !stderr.includes("warning")) {
         throw new Error(`Ord command failed: ${stderr}`);
       }
 
-      // Parse output to extract txid and inscription ID
       const output = stdout.trim();
       console.log(`Ord output: ${output}`);
-
-      // Extract txid from output (format varies by ord version)
       const txidRegex = /([a-f0-9]{64})/i;
       const txidMatch = txidRegex.exec(output);
       if (!txidMatch) {
@@ -97,14 +82,12 @@ export class InscriptionService {
 
       const txid = txidMatch[1]!;
 
-      // Extract inscription ID if available
       const inscriptionIdRegex = /([a-f0-9]{64}i\d+)/i;
       const inscriptionIdMatch = inscriptionIdRegex.exec(output);
       const inscriptionId = inscriptionIdMatch?.[1];
 
       return { txid, inscriptionId };
     } finally {
-      // Clean up temp file
       try {
         await unlink(tempFilePath);
       } catch (error) {
@@ -113,9 +96,6 @@ export class InscriptionService {
     }
   }
 
-  /**
-   * Inscribe using OrdinalsBot API
-   */
   async inscribeWithOrdinalsBot(
     payload: InscriptionPayload,
   ): Promise<{ txid: string; inscriptionId?: string }> {
@@ -168,9 +148,6 @@ export class InscriptionService {
     }
   }
 
-  /**
-   * Main inscription method that tries UniSat first, then OrdinalsBot, then falls back to ord CLI
-   */
   async inscribe(
     proposal: Proposal,
     blockHeight: number,
@@ -188,13 +165,11 @@ export class InscriptionService {
     );
 
     try {
-      // Try UniSat first if API key is available and platform wallet is configured
       if (this.unisatApiKey && env.PLATFORM_WALLET_ADDRESS) {
         console.log(
           "Attempting automatic inscription with UniSat platform wallet...",
         );
 
-        // Use platform wallet address for automatic inscription
         const result = await unisatService.createInscriptionOrder(
           proposal,
           blockHeight,
@@ -208,19 +183,15 @@ export class InscriptionService {
           `Payment required: ${result.amount} sats to ${result.payAddress}`,
         );
 
-        // AUTOMATIC PAYMENT: Use platform wallet to pay for inscription
         try {
           console.log("💳 Initiating automatic payment...");
 
-          // Validate wallet configuration first
           const walletAddress = await bitcoinWallet.getAddress();
           console.log(`🏦 Platform wallet address: ${walletAddress}`);
 
-          // Check wallet balance first
           const balance = await bitcoinWallet.getBalance();
           console.log(`💰 Platform wallet balance: ${balance} sats`);
 
-          // Also check UTXOs to ensure we have spendable funds
           const utxos = await bitcoinWallet.getUTXOs();
           console.log(
             `📦 Available UTXOs: ${utxos.length} (total: ${utxos.reduce((sum, u) => sum + u.value, 0)} sats)`,
@@ -235,14 +206,13 @@ export class InscriptionService {
             console.error(`   Available: ${balance} sats`);
             console.error(`   Deficit: ${deficit} sats`);
 
-            // Instead of throwing, create order without payment for manual processing
             console.log(
               `⚠️ Creating order without automatic payment - manual payment required`,
             );
 
             return {
-              txid: result.orderId, // Store order ID as txid initially
-              inscriptionId: undefined, // Will be set when order completes
+              txid: result.orderId,
+              inscriptionId: undefined,
               orderId: result.orderId,
               payAddress: result.payAddress,
               paymentAmount: result.amount,
@@ -253,7 +223,6 @@ export class InscriptionService {
             throw new Error("No spendable UTXOs available in wallet");
           }
 
-          // Send payment automatically
           console.log(
             `🚀 Sending payment: ${result.amount} sats to ${result.payAddress}`,
           );
@@ -269,7 +238,6 @@ export class InscriptionService {
           console.log(`   Fee: ${paymentResult.fee} sats`);
           console.log(`   Order ID: ${result.orderId}`);
 
-          // Start monitoring payment confirmation in background
           bitcoinWallet
             .waitForConfirmation(paymentResult.txid)
             .then((confirmed) => {
@@ -288,10 +256,9 @@ export class InscriptionService {
               );
             });
 
-          // Return order info with payment txid for tracking
           return {
-            txid: paymentResult.txid, // Store actual payment txid
-            inscriptionId: undefined, // Will be set when order completes
+            txid: paymentResult.txid,
+            inscriptionId: undefined,
             orderId: result.orderId,
             payAddress: result.payAddress,
             paymentAmount: result.amount,
@@ -302,30 +269,25 @@ export class InscriptionService {
           console.error(`   Payment address: ${result.payAddress}`);
           console.error(`   Amount: ${result.amount} sats`);
 
-          // Don't throw error - create order for manual payment instead
           console.log(
             `⚠️ Falling back to manual payment mode for order ${result.orderId}`,
           );
 
           return {
-            txid: result.orderId, // Store order ID as txid initially
-            inscriptionId: undefined, // Will be set when order completes
+            txid: result.orderId,
+            inscriptionId: undefined,
             orderId: result.orderId,
             payAddress: result.payAddress,
             paymentAmount: result.amount,
           };
         }
-
-        // This code block has been moved above to handle both payment success and fallback cases
       }
 
-      // Fall back to OrdinalsBot if API key is available
       if (this.ordinalsApiKey) {
         console.log("Attempting inscription with OrdinalsBot...");
         return await this.inscribeWithOrdinalsBot(payload);
       }
 
-      // Fall back to ord CLI
       console.log("Attempting inscription with ord CLI...");
       return await this.inscribeWithOrd(payload);
     } catch (error) {
@@ -334,23 +296,15 @@ export class InscriptionService {
     }
   }
 
-  /**
-   * Ensure temporary directory exists
-   */
   private async ensureTmpDirectory(): Promise<void> {
     const tmpDir = join(process.cwd(), "tmp");
     try {
       await import("fs/promises").then((fs) =>
         fs.mkdir(tmpDir, { recursive: true }),
       );
-    } catch {
-      // Directory might already exist
-    }
+    } catch {}
   }
 
-  /**
-   * Validate inscription payload
-   */
   validatePayload(payload: InscriptionPayload): boolean {
     return !!(
       payload.project &&
@@ -362,16 +316,12 @@ export class InscriptionService {
     );
   }
 
-  /**
-   * Estimate inscription cost
-   */
   async estimateInscriptionCost(payload: InscriptionPayload): Promise<number> {
     const payloadSize = JSON.stringify(payload).length;
-    const baseCost = 546; // Dust limit
-    const byteCost = Math.ceil(payloadSize / 4) * this.feeRate; // Rough estimate
+    const baseCost = 546;
+    const byteCost = Math.ceil(payloadSize / 4) * this.feeRate;
     return baseCost + byteCost;
   }
 }
 
-// Export singleton instance
 export const inscriptionService = new InscriptionService();

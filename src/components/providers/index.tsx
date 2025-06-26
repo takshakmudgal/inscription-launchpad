@@ -51,8 +51,6 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const [walletAddress, setWalletAddressState] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
-
-  // Load wallet address from localStorage on mount
   useEffect(() => {
     const savedAddress = localStorage.getItem("walletAddress");
     if (savedAddress) {
@@ -60,7 +58,6 @@ export function WalletProvider({ children }: WalletProviderProps) {
     }
   }, []);
 
-  // Load user profile when wallet address changes
   useEffect(() => {
     if (walletAddress) {
       refreshProfile();
@@ -84,7 +81,6 @@ export function WalletProvider({ children }: WalletProviderProps) {
           setUserProfile(data.data);
         }
       } else if (response.status !== 404) {
-        // Only log errors that aren't "user not found"
         console.error("Error loading user profile:", response.statusText);
       }
     } catch (error) {

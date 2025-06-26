@@ -37,7 +37,6 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
     {},
   );
 
-  // Load active orders from storage
   useEffect(() => {
     const loadActiveOrders = () => {
       try {
@@ -46,8 +45,6 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
           (a, b) => b.createdAt - a.createdAt,
         );
         setActiveOrders(orderList);
-
-        // Check status for each order
         orderList.forEach((order) => {
           checkOrderStatus(order, false);
         });
@@ -55,16 +52,11 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
         console.error("Failed to load active orders:", error);
       }
     };
-
     loadActiveOrders();
-
-    // Check for updates every 30 seconds
     const interval = setInterval(loadActiveOrders, 30000);
-
     return () => clearInterval(interval);
   }, []);
 
-  // Function to check order status and remove if complete
   const checkOrderStatus = async (order: ActiveOrder, showSpinner = true) => {
     if (showSpinner) {
       setCheckingOrders((prev) => new Set(prev).add(order.orderId));
@@ -76,14 +68,11 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
 
       if (response.ok && data.success) {
         const status = data.data.status;
-
-        // Update status in state
         setOrderStatuses((prev) => ({
           ...prev,
           [order.orderId]: status,
         }));
 
-        // If order is complete or failed, remove it from active orders
         if (
           status === "minted" ||
           status === "sent" ||
@@ -96,7 +85,6 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
           );
 
           if (status === "minted" || status === "sent") {
-            // Could show a success notification here
             console.log(`Inscription complete for order ${order.orderId}`);
           }
         }
@@ -259,7 +247,6 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
         )}
       </AnimatePresence>
 
-      {/* Floating Action Button */}
       <motion.button
         onClick={() => setIsExpanded(!isExpanded)}
         className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:from-purple-600 hover:to-pink-600"
@@ -278,7 +265,6 @@ export function ActiveOrdersWidget({ onResumeOrder }: ActiveOrdersWidgetProps) {
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
           </svg>
 
-          {/* Badge */}
           {activeOrders.length > 0 && (
             <div className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
               {activeOrders.length}

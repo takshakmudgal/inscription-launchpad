@@ -16,7 +16,7 @@ interface UserProfileModalProps {
   onClose: () => void;
   onSubmit: (profileData: UserProfileData) => void;
   walletAddress: string;
-  isRequired?: boolean; // If true, user cannot skip
+  isRequired?: boolean;
 }
 
 export function UserProfileModal({
@@ -84,7 +84,6 @@ export function UserProfileModal({
     setIsSubmitting(true);
 
     try {
-      // Clean up social handles (remove @ if present)
       const cleanedData = {
         ...formData,
         twitter: formData.twitter
@@ -139,7 +138,6 @@ export function UserProfileModal({
           className="w-full max-w-md rounded-2xl border border-white/20 bg-gradient-to-br from-gray-900/95 to-black/95 p-6 shadow-2xl backdrop-blur-xl"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-2xl shadow-lg">
@@ -168,8 +166,6 @@ export function UserProfileModal({
               </button>
             )}
           </div>
-
-          {/* Wallet Info */}
           <div className="mb-6 rounded-xl bg-white/5 p-4">
             <div className="mb-2 text-sm font-medium text-gray-300">
               Connected Wallet
@@ -178,10 +174,7 @@ export function UserProfileModal({
               {walletAddress}
             </div>
           </div>
-
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Username */}
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
                 Username <span className="text-red-400">*</span>
@@ -198,8 +191,6 @@ export function UserProfileModal({
                 <p className="mt-1 text-sm text-red-400">{errors.username}</p>
               )}
             </div>
-
-            {/* Email */}
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
                 Email (optional)
@@ -216,7 +207,6 @@ export function UserProfileModal({
               )}
             </div>
 
-            {/* Social Handles */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-300">
@@ -253,7 +243,6 @@ export function UserProfileModal({
               </div>
             </div>
 
-            {/* Bio */}
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
                 Bio (optional)
@@ -273,15 +262,12 @@ export function UserProfileModal({
                 <p className="mt-1 text-sm text-red-400">{errors.bio}</p>
               )}
             </div>
-
-            {/* Submit Error */}
             {errors.submit && (
               <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
                 <p className="text-sm text-red-400">{errors.submit}</p>
               </div>
             )}
 
-            {/* Privacy Notice */}
             <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
               <h4 className="mb-1 flex items-center gap-2 text-sm font-medium text-blue-400">
                 <span>🔒</span>
@@ -293,8 +279,6 @@ export function UserProfileModal({
                 anytime.
               </p>
             </div>
-
-            {/* Actions */}
             <div className="flex gap-3 pt-2">
               {!isRequired && (
                 <button

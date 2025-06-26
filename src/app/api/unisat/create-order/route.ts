@@ -20,7 +20,6 @@ interface CreateOrderResponse {
   inscriptionId: number;
 }
 
-// POST /api/unisat/create-order - Create a new inscription order
 export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<ApiResponse<CreateOrderResponse>>> {
@@ -38,7 +37,6 @@ export async function POST(
       );
     }
 
-    // Get the proposal
     const proposal = await db
       .select()
       .from(proposals)
@@ -54,7 +52,6 @@ export async function POST(
 
     const proposalData = proposal[0];
 
-    // Check if proposal is active
     if (proposalData?.status !== "active") {
       return NextResponse.json(
         { success: false, error: "Proposal is not active" },
@@ -62,7 +59,6 @@ export async function POST(
       );
     }
 
-    // Prevent manual inscription - only automatic inscriptions allowed
     return NextResponse.json(
       {
         success: false,

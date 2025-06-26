@@ -16,10 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Check UniSat order status
     const orderStatus = await unisatService.getOrderStatus(orderId);
-
-    // Also get database records
     const inscription = await db
       .select()
       .from(inscriptions)
@@ -65,10 +62,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Force update order status
     const orderStatus = await unisatService.getOrderStatus(orderId);
-
-    // Get inscription record
     const inscription = await db
       .select()
       .from(inscriptions)
@@ -83,13 +77,10 @@ export async function POST(request: NextRequest) {
     }
 
     const inscriptionRecord = inscription[0]!;
-
-    // Update inscription record
     const updateData: any = {
       orderStatus: orderStatus.status,
     };
 
-    // Check if inscription is actually complete despite status
     const file = orderStatus.files[0];
     const hasInscriptionId = file?.inscriptionId;
     const hasTxid = file?.txid;
@@ -103,7 +94,6 @@ export async function POST(request: NextRequest) {
       forceComplete,
     });
 
-    // If completed or has inscription ID (even with problematic status), update with transaction details
     if (
       orderStatus.status === "sent" ||
       orderStatus.status === "minted" ||
@@ -118,7 +108,6 @@ export async function POST(request: NextRequest) {
         updateData.inscriptionUrl = `https://ordinals.com/inscription/${file.inscriptionId}`;
       }
 
-      // Update proposal status to inscribed
       await db
         .update(proposals)
         .set({
@@ -130,15 +119,11 @@ export async function POST(request: NextRequest) {
       console.log(
         `✅ Proposal ${inscriptionRecord.proposalId} marked as inscribed`,
       );
-    }
-
-    // Special handling for payment_withinscription that might be complete
-    else if (orderStatus.status === "payment_withinscription") {
+    } else if (orderStatus.status === "payment_withinscription") {
       console.log(
         `⚠️ Order has payment_withinscription status - checking for completion indicators`,
       );
 
-      // If we found inscription details, mark as complete
       if (hasInscriptionId) {
         console.log(
           `🎯 Found inscription ID despite problematic status - marking as complete`,
@@ -151,7 +136,6 @@ export async function POST(request: NextRequest) {
           updateData.txid = file.txid;
         }
 
-        // Update proposal status to inscribed
         await db
           .update(proposals)
           .set({
@@ -166,7 +150,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Update the inscription record
     await db
       .update(inscriptions)
       .set(updateData)

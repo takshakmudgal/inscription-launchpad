@@ -51,7 +51,6 @@ export class EsploraService {
   private tokenExpiresAt: number = 0;
 
   constructor() {
-    // Use enterprise API endpoint based on network
     this.enterpriseApiUrl =
       env.BITCOIN_NETWORK === "mainnet"
         ? "https://enterprise.blockstream.info/api"
@@ -68,7 +67,6 @@ export class EsploraService {
       },
     });
 
-    // Add request interceptor to handle authentication
     this.axiosInstance.interceptors.request.use(async (config) => {
       await this.ensureValidToken();
       if (this.accessToken) {
@@ -77,16 +75,12 @@ export class EsploraService {
       return config;
     });
 
-    // Add response interceptor to handle token expiration
     this.axiosInstance.interceptors.response.use(
       (response) => response,
       async (error) => {
         if (error.response?.status === 401) {
-          // Token might be expired, try to refresh
           this.accessToken = null;
           this.tokenExpiresAt = 0;
-
-          // Retry the request
           const originalRequest = error.config;
           if (!originalRequest._retry) {
             originalRequest._retry = true;
@@ -102,21 +96,14 @@ export class EsploraService {
     );
   }
 
-  /**
-   * Ensure we have a valid access token
-   */
   private async ensureValidToken(): Promise<void> {
     const now = Date.now();
 
-    // Check if token is expired or will expire in the next 30 seconds
     if (!this.accessToken || now >= this.tokenExpiresAt - 30000) {
       await this.refreshAccessToken();
     }
   }
 
-  /**
-   * Get a new access token
-   */
   private async refreshAccessToken(): Promise<void> {
     try {
       const params = new URLSearchParams();
@@ -133,7 +120,6 @@ export class EsploraService {
       });
 
       this.accessToken = response.data.access_token;
-      // Set expiration time (expires_in is in seconds, subtract 30 seconds for safety)
       this.tokenExpiresAt = Date.now() + (response.data.expires_in - 30) * 1000;
 
       console.log("Successfully refreshed Esplora access token");
@@ -143,9 +129,6 @@ export class EsploraService {
     }
   }
 
-  /**
-   * Get the current block height
-   */
   async getCurrentBlockHeight(): Promise<number> {
     try {
       const response =
@@ -157,9 +140,6 @@ export class EsploraService {
     }
   }
 
-  /**
-   * Get block information by height
-   */
   async getBlockByHeight(height: number): Promise<BlockInfo> {
     try {
       const response = await this.axiosInstance.get<string>(
@@ -183,9 +163,6 @@ export class EsploraService {
     }
   }
 
-  /**
-   * Get block information by hash
-   */
   async getBlockByHash(hash: string): Promise<BlockInfo> {
     try {
       const response = await this.axiosInstance.get<EsploraBlock>(
@@ -204,9 +181,6 @@ export class EsploraService {
     }
   }
 
-  /**
-   * Get the latest block information
-   */
   async getLatestBlock(): Promise<BlockInfo> {
     try {
       const height = await this.getCurrentBlockHeight();
@@ -217,9 +191,6 @@ export class EsploraService {
     }
   }
 
-  /**
-   * Get transaction information by txid
-   */
   async getTransaction(txid: string): Promise<BitcoinTransaction> {
     try {
       const response = await this.axiosInstance.get<EsploraTransaction>(
@@ -240,9 +211,6 @@ export class EsploraService {
     }
   }
 
-  /**
-   * Check if a transaction is confirmed
-   */
   async isTransactionConfirmed(txid: string): Promise<boolean> {
     try {
       const tx = await this.getTransaction(txid);
@@ -253,9 +221,6 @@ export class EsploraService {
     }
   }
 
-  /**
-   * Get multiple blocks in batch
-   */
   async getBlocksBatch(heights: number[]): Promise<BlockInfo[]> {
     try {
       const promises = heights.map((height) => this.getBlockByHeight(height));
@@ -266,9 +231,6 @@ export class EsploraService {
     }
   }
 
-  /**
-   * Get fee estimates
-   */
   async getFeeEstimates(): Promise<Record<string, number>> {
     try {
       const response =
@@ -276,13 +238,10 @@ export class EsploraService {
       return response.data;
     } catch (error) {
       console.error("Error fetching fee estimates:", error);
-      return { "1": 15, "6": 10, "144": 5 }; // Default fallback fees
+      return { "1": 15, "6": 10, "144": 5 };
     }
   }
 
-  /**
-   * Get address balance
-   */
   async getAddressBalance(
     address: string,
   ): Promise<{ confirmed: number; unconfirmed: number }> {
@@ -304,6 +263,4 @@ export class EsploraService {
     }
   }
 }
-
-// Export singleton instance
 export const esploraService = new EsploraService();

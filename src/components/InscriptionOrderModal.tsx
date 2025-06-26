@@ -83,7 +83,6 @@ export function InscriptionOrderModal({
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [existingOrder, setExistingOrder] = useState<OrderData | null>(null);
 
-  // Remove completed order from localStorage
   const removeOrderFromStorage = (proposalId: string) => {
     try {
       const savedOrders = localStorage.getItem(STORAGE_KEY);
@@ -111,14 +110,11 @@ export function InscriptionOrderModal({
 
         if (result.success && result.data) {
           setOrderStatus(result.data);
-
-          // If order is completed, mark proposal as inscribed and notify parent component
           if (result.data.status === "minted" && proposal && onOrderCreated) {
             try {
               await fetch(`/api/proposals/${proposal.id}/inscribe`, {
                 method: "PATCH",
               });
-              // Remove the completed order from localStorage
               removeOrderFromStorage(proposal.id);
             } catch (error) {
               console.error("Error updating proposal status:", error);
@@ -137,7 +133,6 @@ export function InscriptionOrderModal({
     [orderData?.orderId, onOrderCreated, proposal],
   );
 
-  // Load existing order from localStorage
   useEffect(() => {
     if (!isOpen || !proposal) return;
 
@@ -152,7 +147,6 @@ export function InscriptionOrderModal({
           setExistingOrder(existing);
           setOrderData(existing);
           setReceiveAddress(existing.receiveAddress);
-          // Check status of existing order
           void checkOrderStatus(existing.orderId);
         }
       } catch (error) {
@@ -161,7 +155,6 @@ export function InscriptionOrderModal({
     }
   }, [isOpen, proposal, checkOrderStatus]);
 
-  // Save order to localStorage
   const saveOrderToStorage = (order: OrderData) => {
     try {
       const savedOrders = localStorage.getItem(STORAGE_KEY);
@@ -169,12 +162,10 @@ export function InscriptionOrderModal({
         ? (JSON.parse(savedOrders) as OrderData[])
         : [];
 
-      // Remove any existing order for this proposal
       const filteredOrders = orders.filter(
         (o) => o.proposalId !== order.proposalId,
       );
 
-      // Add the new order
       filteredOrders.push(order);
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredOrders));
@@ -183,7 +174,6 @@ export function InscriptionOrderModal({
     }
   };
 
-  // Reset state when modal opens/closes
   useEffect(() => {
     if (!isOpen) {
       if (!existingOrder) {
@@ -198,13 +188,12 @@ export function InscriptionOrderModal({
     }
   }, [isOpen, existingOrder]);
 
-  // Poll for order status updates
   useEffect(() => {
     if (!orderData?.orderId) return;
 
     const interval = setInterval(() => {
       void checkOrderStatus();
-    }, 10000); // Check every 10 seconds
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [orderData?.orderId, checkOrderStatus]);
@@ -311,7 +300,6 @@ export function InscriptionOrderModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <div className="p-8">
-          {/* Header */}
           <div className="mb-6 flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">
@@ -325,7 +313,6 @@ export function InscriptionOrderModal({
             </div>
           </div>
 
-          {/* Proposal Info */}
           <div className="mb-6 rounded-xl bg-gradient-to-r from-purple-50 to-blue-50 p-6">
             <h3 className="text-xl font-semibold text-gray-900">
               {proposal?.name} ({proposal?.ticker})
@@ -403,7 +390,6 @@ export function InscriptionOrderModal({
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Order Success */}
               <div className="rounded-xl border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 p-6">
                 <div className="flex items-start gap-3">
                   <div className="text-2xl text-green-600">✅</div>
@@ -423,8 +409,6 @@ export function InscriptionOrderModal({
                   </div>
                 </div>
               </div>
-
-              {/* Order Status */}
               {orderStatus && (
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-6">
                   <div className="mb-4 flex items-center justify-between">
@@ -486,8 +470,6 @@ export function InscriptionOrderModal({
                   )}
                 </div>
               )}
-
-              {/* Payment Instructions */}
               <div className="rounded-xl border border-gray-200 p-6">
                 <h4 className="mb-4 text-lg font-bold text-gray-900">
                   💰 Payment Instructions
@@ -563,8 +545,6 @@ export function InscriptionOrderModal({
                   </div>
                 </div>
               </div>
-
-              {/* Action Buttons */}
               <div className="flex gap-3">
                 <button
                   onClick={onClose}

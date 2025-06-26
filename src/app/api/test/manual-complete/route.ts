@@ -15,7 +15,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Get inscription record
     const inscription = await db
       .select()
       .from(inscriptions)
@@ -30,8 +29,6 @@ export async function POST(request: NextRequest) {
     }
 
     const inscriptionRecord = inscription[0]!;
-
-    // Manual completion with provided inscription ID and txid
     await db
       .update(inscriptions)
       .set({
@@ -42,7 +39,6 @@ export async function POST(request: NextRequest) {
       })
       .where(eq(inscriptions.id, inscriptionRecord.id));
 
-    // Update proposal to inscribed
     await db
       .update(proposals)
       .set({

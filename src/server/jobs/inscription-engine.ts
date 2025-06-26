@@ -14,11 +14,7 @@ class InscriptionEngine {
     this.start();
   }
 
-  /**
-   * Start the cron job - runs every 2 minutes to check for new blocks
-   */
   start() {
-    // Run every 2 minutes to check for new blocks and process inscriptions
     cron.schedule("*/2 * * * *", () => {
       void (async () => {
         if (this.isRunning) {
@@ -42,17 +38,11 @@ class InscriptionEngine {
     );
   }
 
-  /**
-   * Process new blocks and inscribe winning memes every 2 blocks
-   */
   async processNewBlocks() {
     console.log("🔍 Checking for new blocks...");
 
     try {
-      // Get current block height
       const currentBlockHeight = await esploraService.getCurrentBlockHeight();
-
-      // Get last processed block
       const lastProcessed = await db
         .select()
         .from(blockTracker)
@@ -68,7 +58,6 @@ class InscriptionEngine {
         `📊 Current block: ${currentBlockHeight}, Last processed: ${lastProcessedHeight}`,
       );
 
-      // Process each new block
       for (
         let height = lastProcessedHeight + 1;
         height <= currentBlockHeight;
@@ -78,14 +67,10 @@ class InscriptionEngine {
 
         try {
           await this.processBlock(height);
-
-          // Update block tracker
           await this.updateBlockTracker(height);
-
           console.log(`✅ Block ${height} processed successfully`);
         } catch (error) {
           console.error(`❌ Error processing block ${height}:`, error);
-          // Don't break the loop, continue with next block
         }
       }
     } catch (error) {
@@ -93,18 +78,10 @@ class InscriptionEngine {
     }
   }
 
-  /**
-   * Process a single block - inscribe every 2 blocks, expire after 5 blocks
-   */
   async processBlock(blockHeight: number) {
-    // Get block information
     const block = await esploraService.getBlockByHeight(blockHeight);
     console.log(`📋 Block ${blockHeight} hash: ${block.hash}`);
-
-    // First, expire and remove old proposals (older than 5 blocks without being launched)
     await this.expireAndRemoveOldProposals(blockHeight);
-
-    // Get top voted active or leader proposal
     const topProposal = await db
       .select()
       .from(proposals)
@@ -118,8 +95,6 @@ class InscriptionEngine {
     }
 
     const winner = topProposal[0]!;
-
-    // Check if this proposal has already been inscribed
     const existingInscription = await db
       .select()
       .from(inscriptions)
@@ -131,8 +106,7 @@ class InscriptionEngine {
       return;
     }
 
-    // Check if proposal has minimum votes (configurable threshold)
-    const minVotes = 1; // Minimum votes required
+    const minVotes = 1;
     if (winner.totalVotes < minVotes) {
       console.log(
         `📊 Proposal ${winner.ticker} has insufficient votes (${winner.totalVotes}/${minVotes})`,
@@ -144,21 +118,19 @@ class InscriptionEngine {
       `🏆 Current leader: ${winner.name} (${winner.ticker}) with ${winner.totalVotes} votes`,
     );
 
-    // Check if this is the first time this proposal is at #1
     if (!winner.firstTimeAsLeader) {
       console.log(
         `🎯 New leader detected! Setting leadership timestamp for ${winner.ticker}`,
       );
 
-      // Set the first time as leader and expiration block (5 blocks from now)
       await db
         .update(proposals)
         .set({
-          status: "leader", // Mark as leader status
+          status: "leader",
           firstTimeAsLeader: new Date(),
-          leaderStartBlock: blockHeight, // Track the actual block height when became leader
-          leaderboardMinBlocks: 2, // Minimum 2 blocks as leader before inscription
-          expirationBlock: blockHeight + 5, // Expires in 5 blocks if not inscribed
+          leaderStartBlock: blockHeight,
+          leaderboardMinBlocks: 2,
+          expirationBlock: blockHeight + 5,
           updatedAt: new Date(),
         })
         .where(eq(proposals.id, winner.id));
@@ -166,10 +138,9 @@ class InscriptionEngine {
       console.log(
         `⏰ Proposal ${winner.ticker} will be eligible for inscription after 2 blocks (expires in 5 blocks)`,
       );
-      return; // Don't inscribe yet, needs to wait 2 blocks
+      return;
     }
 
-    // Check if enough blocks have passed since becoming leader (minimum 2 blocks)
     const blocksAsLeader = await this.getBlocksAsLeader(
       { leaderStartBlock: winner.leaderStartBlock },
       blockHeight,
@@ -187,7 +158,6 @@ class InscriptionEngine {
     );
 
     try {
-      // Transform database result to match Proposal type
       const proposalForInscription = {
         ...winner,
         website: winner.website ?? undefined,
@@ -203,7 +173,6 @@ class InscriptionEngine {
         updatedAt: winner.updatedAt.toISOString(),
       };
 
-      // Mark proposal as inscribing before starting the process
       await db
         .update(proposals)
         .set({
@@ -214,7 +183,6 @@ class InscriptionEngine {
 
       console.log(`🎯 Starting inscription for ${winner.ticker}...`);
 
-      // Use the inscription service to create the inscription
       const inscriptionResult = await inscriptionService.inscribe(
         proposalForInscription,
         blockHeight,
@@ -224,7 +192,6 @@ class InscriptionEngine {
         `✅ Inscription initiated for ${winner.ticker}: ${inscriptionResult.orderId}`,
       );
 
-      // Create inscription record
       await db.insert(inscriptions).values({
         proposalId: winner.id,
         blockHeight,
@@ -255,7 +222,6 @@ class InscriptionEngine {
     } catch (error) {
       console.error(`❌ Error inscribing proposal ${winner.ticker}:`, error);
 
-      // Reset proposal status on error
       await db
         .update(proposals)
         .set({
@@ -270,12 +236,8 @@ class InscriptionEngine {
     }
   }
 
-  /**
-   * Expire and remove old proposals that haven't been launched after 5 blocks
-   */
   async expireAndRemoveOldProposals(currentBlockHeight: number) {
     try {
-      // Find proposals that are leaders but have exceeded their expiration block
       const expiredProposals = await db
         .select()
         .from(proposals)
@@ -295,8 +257,6 @@ class InscriptionEngine {
             `🗑️  Removing expired proposal: ${proposal.ticker} (expired at block ${proposal.expirationBlock}, current: ${currentBlockHeight})`,
           );
 
-          // Remove expired proposals from leaderboard by marking as expired
-          // This removes them from active consideration
           await db
             .update(proposals)
             .set({
@@ -315,9 +275,6 @@ class InscriptionEngine {
     }
   }
 
-  /**
-   * Calculate how many blocks a proposal has been the leader
-   */
   async getBlocksAsLeader(
     proposal: { leaderStartBlock: number | null },
     currentBlockHeight: number,
@@ -329,18 +286,13 @@ class InscriptionEngine {
     return Math.max(0, currentBlockHeight - proposal.leaderStartBlock);
   }
 
-  /**
-   * Update the block tracker with the latest processed block
-   */
   async updateBlockTracker(blockHeight: number) {
     try {
       const block = await esploraService.getBlockByHeight(blockHeight);
 
-      // Check if we have any existing tracker entries
       const existing = await db.select().from(blockTracker).limit(1);
 
       if (existing.length > 0) {
-        // Update existing
         await db
           .update(blockTracker)
           .set({
@@ -350,7 +302,6 @@ class InscriptionEngine {
           })
           .where(eq(blockTracker.id, existing[0]!.id));
       } else {
-        // Create new
         await db.insert(blockTracker).values({
           lastProcessedBlock: blockHeight,
           lastProcessedHash: block.hash,
@@ -365,9 +316,6 @@ class InscriptionEngine {
     }
   }
 
-  /**
-   * Manual trigger for testing
-   */
   async triggerManually() {
     if (this.isRunning) {
       console.log("⏳ Engine already running");
@@ -383,9 +331,6 @@ class InscriptionEngine {
     }
   }
 
-  /**
-   * Get engine status
-   */
   async getStatus() {
     try {
       const currentBlockHeight = await esploraService.getCurrentBlockHeight();
@@ -422,13 +367,10 @@ class InscriptionEngine {
 
 export const inscriptionEngine = new InscriptionEngine();
 
-// Initialize UniSat monitor for tracking orders
 import "./unisat-monitor";
 
-// If running as standalone script
 if (require.main === module) {
   console.log("🚀 Starting Inscription Engine...");
-  // Keep the process alive
   process.on("SIGINT", () => {
     console.log("👋 Inscription Engine shutting down...");
     process.exit(0);

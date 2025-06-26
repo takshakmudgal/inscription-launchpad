@@ -32,11 +32,10 @@ export interface Proposal {
     | "inscribed"
     | "rejected"
     | "expired";
-  // Automatic inscription timing fields
-  firstTimeAsLeader?: string; // When this proposal first became #1
-  leaderStartBlock?: number; // Block height when this proposal first became #1
-  leaderboardMinBlocks: number; // Minimum blocks to stay as leader before inscription
-  expirationBlock?: number; // Block at which this proposal expires if not inscribed
+  firstTimeAsLeader?: string;
+  leaderStartBlock?: number;
+  leaderboardMinBlocks: number;
+  expirationBlock?: number;
   createdAt: string;
   updatedAt: string;
   submitter?: User;
@@ -69,7 +68,6 @@ export interface Inscription {
   proposal?: Proposal;
 }
 
-// Database record type for internal use
 export interface InscriptionRecord {
   id: number;
   proposalId: number;

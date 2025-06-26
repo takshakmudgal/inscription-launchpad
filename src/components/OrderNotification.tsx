@@ -105,8 +105,6 @@ export function OrderNotification({
                   </svg>
                 </button>
               </div>
-
-              {/* Progress bar for auto-close */}
               {notification.autoClose !== false && (
                 <motion.div
                   className="mt-3 h-1 overflow-hidden rounded-full bg-white/20"
@@ -133,7 +131,6 @@ export function OrderNotification({
   );
 }
 
-// Hook for managing notifications
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 

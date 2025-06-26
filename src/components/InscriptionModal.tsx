@@ -10,7 +10,7 @@ interface InscriptionModalProps {
   proposalName: string;
   proposalTicker: string;
   receiveAddress: string;
-  existingOrderId?: string; // For recovering existing orders
+  existingOrderId?: string;
 }
 
 interface InscriptionOrder {
@@ -38,10 +38,7 @@ interface OrderStatus {
   paidAmount: number;
 }
 
-// LocalStorage key for persisting orders
 const ACTIVE_ORDERS_KEY = "bitmemes_active_orders";
-
-// Utility functions for order persistence
 const saveOrderToStorage = (order: InscriptionOrder) => {
   try {
     const activeOrders = getActiveOrdersFromStorage();
@@ -91,7 +88,6 @@ export function InscriptionModal({
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [isRecovering, setIsRecovering] = useState(false);
 
-  // Function to check order status
   const checkOrderStatus = useCallback(async (orderId: string) => {
     try {
       const response = await fetch(`/api/unisat/order/${orderId}`);
@@ -99,23 +95,19 @@ export function InscriptionModal({
 
       if (response.ok && data.success) {
         setOrderStatus(data.data);
-
-        // Check if inscription is complete
         if (data.data.status === "minted" || data.data.status === "sent") {
           setStep("success");
           setIsMonitoring(false);
-          // Remove from active orders since it's complete
           removeOrderFromStorage(orderId);
-          return true; // Order complete
+          return true;
         } else if (
           data.data.status === "canceled" ||
           data.data.status === "refunded"
         ) {
           setError("Order was canceled or refunded");
           setIsMonitoring(false);
-          // Remove from active orders since it failed
           removeOrderFromStorage(orderId);
-          return true; // Order failed
+          return true;
         }
       } else {
         console.error("Failed to check order status:", data.error);
@@ -123,17 +115,15 @@ export function InscriptionModal({
     } catch (error) {
       console.error("Error checking order status:", error);
     }
-    return false; // Order still pending
+    return false;
   }, []);
 
-  // Function to recover an existing order
   const recoverOrder = useCallback(
     async (orderId: string) => {
       setIsRecovering(true);
       setError(null);
 
       try {
-        // First check if order exists in localStorage
         const activeOrders = getActiveOrdersFromStorage();
         const storedOrder = activeOrders[orderId];
 
@@ -142,15 +132,12 @@ export function InscriptionModal({
           setStep("payment");
           setIsMonitoring(true);
 
-          // Check current status
           await checkOrderStatus(orderId);
         } else {
-          // Try to get order details from API
           const response = await fetch(`/api/unisat/order/${orderId}`);
           const data = await response.json();
 
           if (response.ok && data.success) {
-            // Reconstruct order object
             const recoveredOrder: InscriptionOrder = {
               orderId,
               payAddress: data.data.payAddress,
@@ -166,13 +153,11 @@ export function InscriptionModal({
             setOrder(recoveredOrder);
             setOrderStatus(data.data);
 
-            // Determine step based on status
             if (data.data.status === "minted" || data.data.status === "sent") {
               setStep("success");
             } else {
               setStep("payment");
               setIsMonitoring(true);
-              // Save to storage for future recovery
               saveOrderToStorage(recoveredOrder);
             }
           } else {
@@ -197,28 +182,24 @@ export function InscriptionModal({
     ],
   );
 
-  // Effect to handle existing order recovery
   useEffect(() => {
     if (isOpen && existingOrderId && !order) {
       recoverOrder(existingOrderId);
     }
   }, [isOpen, existingOrderId, order, recoverOrder]);
 
-  // Background monitoring effect
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
 
     if (isMonitoring && order?.orderId) {
-      // Check immediately
       checkOrderStatus(order.orderId);
 
-      // Then check every 30 seconds
       intervalId = setInterval(async () => {
         const isComplete = await checkOrderStatus(order.orderId);
         if (isComplete) {
           setIsMonitoring(false);
         }
-      }, 30000); // 30 seconds
+      }, 30000);
     }
 
     return () => {
@@ -261,7 +242,6 @@ export function InscriptionModal({
         setStep("payment");
         setIsMonitoring(true);
 
-        // Save to localStorage for recovery
         saveOrderToStorage(newOrder);
       } else {
         setError(data.error || "Failed to create inscription order");
@@ -282,23 +262,18 @@ export function InscriptionModal({
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      // Could add a toast notification here
     } catch (error) {
       console.error("Failed to copy:", error);
     }
   };
 
   const handleClose = () => {
-    // Don't clear order data if it's still pending - keep for recovery
     if (order && (step === "payment" || isMonitoring)) {
-      // Keep order in localStorage for recovery
-      // Only clear UI state
       setOrderStatus(null);
       setStep("confirm");
       setError(null);
       setIsMonitoring(false);
     } else {
-      // Order is complete or failed, safe to clear everything
       if (order) {
         removeOrderFromStorage(order.orderId);
       }
@@ -361,7 +336,6 @@ export function InscriptionModal({
           transition={{ duration: 0.2 }}
           className="w-full max-w-lg rounded-2xl border border-white/20 bg-gradient-to-br from-gray-900/95 to-black/95 p-6 shadow-2xl backdrop-blur-xl"
         >
-          {/* Header */}
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-2xl shadow-lg">
               {existingOrderId ? "🔄" : "⚡"}
@@ -376,7 +350,6 @@ export function InscriptionModal({
             </div>
           </div>
 
-          {/* Recovery Loading */}
           {isRecovering && (
             <div className="mb-6 text-center">
               <div className="mb-4 inline-flex h-12 w-12 animate-spin items-center justify-center rounded-full border-4 border-purple-500/30 border-t-purple-500"></div>
@@ -386,7 +359,6 @@ export function InscriptionModal({
             </div>
           )}
 
-          {/* Step Indicator */}
           {!isRecovering && (
             <div className="mb-6 flex items-center justify-center space-x-4">
               <div
@@ -422,7 +394,6 @@ export function InscriptionModal({
             </div>
           )}
 
-          {/* Content */}
           {!isRecovering && (
             <div className="space-y-6">
               {step === "confirm" && (
@@ -517,8 +488,6 @@ export function InscriptionModal({
                       inscription
                     </p>
                   </div>
-
-                  {/* Real-time Status */}
                   {orderStatus && (
                     <div className="rounded-xl bg-white/5 p-4">
                       <div className="mb-2 flex items-center justify-between">
@@ -683,5 +652,4 @@ export function InscriptionModal({
   );
 }
 
-// Export utility functions for use in other components
 export { getActiveOrdersFromStorage, removeOrderFromStorage };

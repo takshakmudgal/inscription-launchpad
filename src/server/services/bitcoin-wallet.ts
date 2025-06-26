@@ -3,7 +3,6 @@ import * as ecc from "tiny-secp256k1";
 import { ECPairFactory } from "ecpair";
 import { env } from "~/env";
 
-// Initialize ECC library
 bitcoin.initEccLib(ecc);
 const ECPair = ECPairFactory(ecc);
 
@@ -16,8 +15,8 @@ export interface UTXO {
 
 export interface PaymentRequest {
   toAddress: string;
-  amount: number; // in satoshis
-  feeRate?: number; // sats/vB
+  amount: number;
+  feeRate?: number;
 }
 
 export interface PaymentResult {
@@ -28,7 +27,6 @@ export interface PaymentResult {
   totalOutput: number;
 }
 
-// Lazy wallet service that initializes only when needed
 export const bitcoinWallet = {
   async getAddress(): Promise<string> {
     const wallet = await this.getWallet();
@@ -43,18 +41,15 @@ export const bitcoinWallet = {
   async getUTXOs(): Promise<UTXO[]> {
     const wallet = await this.getWallet();
 
-    // Import EsploraService for authenticated API calls
     const { EsploraService } = await import("~/server/btc/esplora");
     const esploraService = new EsploraService();
 
     try {
-      // Use enterprise API endpoint directly
       const esploraUrl =
         env.BITCOIN_NETWORK === "mainnet"
           ? "https://enterprise.blockstream.info/api"
           : "https://enterprise.blockstream.info/testnet/api";
 
-      // Ensure we have a valid token first
       await (esploraService as any).ensureValidToken();
 
       const controller = new AbortController();
@@ -83,12 +78,10 @@ export const bitcoinWallet = {
         status: { confirmed: boolean };
       }>;
 
-      // Only return confirmed UTXOs and add scriptPubKey
       const confirmedUTXOs: UTXO[] = [];
 
       for (const utxo of utxos) {
         if (utxo.status.confirmed) {
-          // Get scriptPubKey from transaction output
           const txController = new AbortController();
           const txTimeoutId = setTimeout(() => txController.abort(), 30000);
 
@@ -132,17 +125,14 @@ export const bitcoinWallet = {
 
     console.log(`💸 Creating payment: ${amount} sats to ${toAddress}`);
 
-    // Get UTXOs
     const utxos = await this.getUTXOs();
     if (utxos.length === 0) {
       throw new Error("No UTXOs available for spending");
     }
 
-    // Calculate total available
     const totalAvailable = utxos.reduce((sum, utxo) => sum + utxo.value, 0);
     console.log(`💰 Total available: ${totalAvailable} sats`);
 
-    // Select UTXOs (simple: use all available for now)
     let totalInput = 0;
     const selectedUTXOs: UTXO[] = [];
 
@@ -150,19 +140,17 @@ export const bitcoinWallet = {
       selectedUTXOs.push(utxo);
       totalInput += utxo.value;
 
-      // Estimate transaction size and fee
       const estimatedSize = this.estimateTransactionSize(
         selectedUTXOs.length,
         2,
-      ); // 2 outputs (payment + change)
+      );
       const estimatedFee = estimatedSize * feeRate;
 
       if (totalInput >= amount + estimatedFee) {
-        break; // We have enough
+        break;
       }
     }
 
-    // Final fee calculation
     const txSize = this.estimateTransactionSize(selectedUTXOs.length, 2);
     const fee = txSize * feeRate;
     const change = totalInput - amount - fee;
@@ -178,10 +166,7 @@ export const bitcoinWallet = {
     console.log(`   Fee: ${fee} sats`);
     console.log(`   Change: ${change} sats`);
 
-    // Create transaction
     const psbt = new bitcoin.Psbt({ network: wallet.network });
-
-    // Add inputs
     for (const utxo of selectedUTXOs) {
       psbt.addInput({
         hash: utxo.txid,
@@ -193,22 +178,18 @@ export const bitcoinWallet = {
       });
     }
 
-    // Add output for payment
     psbt.addOutput({
       address: toAddress,
       value: amount,
     });
 
-    // Add change output if needed
     if (change > 546) {
-      // Dust limit
       psbt.addOutput({
         address: wallet.address,
         value: change,
       });
     }
 
-    // Sign all inputs
     const signer = {
       publicKey: Buffer.from(wallet.keyPair.publicKey),
       sign: (hash: Buffer) => Buffer.from(wallet.keyPair.sign(hash)),
@@ -218,7 +199,6 @@ export const bitcoinWallet = {
       psbt.signInput(i, signer);
     }
 
-    // Finalize and extract transaction
     psbt.finalizeAllInputs();
     const tx = psbt.extractTransaction();
     const rawTx = tx.toHex();
@@ -226,7 +206,6 @@ export const bitcoinWallet = {
 
     console.log(`✅ Transaction created: ${txid}`);
 
-    // Broadcast transaction
     await this.broadcastTransaction(rawTx);
 
     console.log(`🚀 Transaction broadcasted successfully!`);
@@ -245,17 +224,14 @@ export const bitcoinWallet = {
     maxWaitTime = 3600000,
   ): Promise<boolean> {
     const startTime = Date.now();
-    const checkInterval = 30000; // Check every 30 seconds
+    const checkInterval = 30000;
 
     console.log(`⏳ Monitoring transaction confirmation: ${txid}`);
-
-    // Import EsploraService for authenticated API calls
     const { EsploraService } = await import("~/server/btc/esplora");
     const esploraService = new EsploraService();
 
     while (Date.now() - startTime < maxWaitTime) {
       try {
-        // Ensure we have a valid token
         await (esploraService as any).ensureValidToken();
 
         const esploraUrl =
@@ -287,7 +263,6 @@ export const bitcoinWallet = {
           }
         }
 
-        // Wait before next check
         await new Promise((resolve) => setTimeout(resolve, checkInterval));
       } catch (error) {
         console.error("Error checking transaction status:", error);
@@ -298,25 +273,21 @@ export const bitcoinWallet = {
     return false;
   },
 
-  // Private methods
   async getWallet() {
     if (!env.PLATFORM_WALLET_PRIVATE_KEY_WIF) {
       throw new Error("Platform wallet private key not configured");
     }
 
-    // Set network
     const network =
       env.BITCOIN_NETWORK === "mainnet"
         ? bitcoin.networks.bitcoin
         : bitcoin.networks.testnet;
 
-    // Initialize key pair from WIF private key
     const keyPair = ECPair.fromWIF(
       env.PLATFORM_WALLET_PRIVATE_KEY_WIF,
       network,
     );
 
-    // Derive address (P2WPKH - native segwit)
     const { address } = bitcoin.payments.p2wpkh({
       pubkey: Buffer.from(keyPair.publicKey),
       network: network,
@@ -330,12 +301,10 @@ export const bitcoinWallet = {
   },
 
   async broadcastTransaction(rawTx: string): Promise<void> {
-    // Import EsploraService for authenticated API calls
     const { EsploraService } = await import("~/server/btc/esplora");
     const esploraService = new EsploraService();
 
     try {
-      // Ensure we have a valid token
       await (esploraService as any).ensureValidToken();
 
       const esploraUrl =
@@ -373,10 +342,9 @@ export const bitcoinWallet = {
   },
 
   estimateTransactionSize(inputs: number, outputs: number): number {
-    // Rough estimation for P2WPKH transactions
-    const baseSize = 10; // version, locktime, etc.
-    const inputSize = 68; // P2WPKH input size in witness
-    const outputSize = 31; // P2WPKH output size
+    const baseSize = 10;
+    const inputSize = 68;
+    const outputSize = 31;
 
     return baseSize + inputs * inputSize + outputs * outputSize;
   },
