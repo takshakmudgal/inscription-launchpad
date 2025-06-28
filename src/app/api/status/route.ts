@@ -18,6 +18,20 @@ interface SystemStatus {
     lastProcessedHash?: string;
     lastChecked?: string;
     blocksBehind: number;
+    competition: {
+      totalActive: number;
+      currentLeaders: number;
+      currentlyInscribing: number;
+      totalExpired: number;
+      totalInscribed: number;
+      topProposal: {
+        ticker: string;
+        votes: number;
+        status: string;
+        blocksAsLeader: number;
+      } | null;
+    };
+    error?: string;
   };
   unisatMonitor: {
     isRunning: boolean;
@@ -84,7 +98,7 @@ export async function GET(): Promise<NextResponse<ApiResponse<SystemStatus>>> {
 
     const status: SystemStatus = {
       timestamp: new Date().toISOString(),
-      inscriptionEngine: engineStatus,
+      inscriptionEngine: engineStatus as SystemStatus["inscriptionEngine"],
       unisatMonitor: unisatStatus,
       database: {
         connected: dbConnected,
