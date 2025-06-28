@@ -66,11 +66,12 @@ export function ProposalCard({
     if (status === "inscribed") return null;
     if (status === "active") {
       return {
-        text: "🎯 Needs to reach #1 position to become leader",
+        text: "⚔️ Fighting for #1 position to become leader",
         color: "text-gray-400",
         bg: "bg-gray-500/20 border-gray-500/30",
-        icon: "🎯",
+        icon: "⚔️",
         phase: "voting",
+        details: "Must reach #1 to start 2-block survival challenge",
       };
     }
 
@@ -80,22 +81,23 @@ export function ProposalCard({
 
       if (remaining > 0) {
         return {
-          text: `⏳ ${remaining} more blocks needed as leader`,
+          text: `💪 DEFENDING LEADERSHIP: ${remaining} blocks to survive`,
           color: "text-yellow-400",
           bg: "bg-yellow-500/20 border-yellow-500/30",
-          icon: "⏳",
+          icon: "👑",
           phase: "leading",
-          details: `Block ${currentBlockHeight} • Progress: ${blocksAsLeader}/${leaderboardMinBlocks} blocks`,
+          details: `Block ${currentBlockHeight} • Survival Progress: ${blocksAsLeader}/${leaderboardMinBlocks} blocks`,
+          subDetails: "⚠️ Lose #1 position = immediate elimination!",
           progress: (blocksAsLeader / leaderboardMinBlocks) * 100,
         };
       } else {
         return {
-          text: "🎉 Inscription starting automatically!",
+          text: "🏆 SURVIVAL COMPLETE! Inscription starting...",
           color: "text-green-400",
           bg: "bg-green-500/20 border-green-500/30",
           icon: "🚀",
           phase: "ready",
-          details: `Block ${currentBlockHeight} • Automatic inscription in progress`,
+          details: `Block ${currentBlockHeight} • Champion earned inscription rights!`,
           progress: 100,
         };
       }
@@ -103,24 +105,26 @@ export function ProposalCard({
 
     if (status === "inscribing") {
       return {
-        text: "⚡ Bitcoin Inscription in Progress",
+        text: "⚡ CHAMPION INSCRIPTION IN PROGRESS",
         color: "text-blue-400",
         bg: "bg-blue-500/20 border-blue-500/30",
         icon: "⚡",
         phase: "inscribing",
         details:
-          "Your meme is being permanently inscribed on Bitcoin blockchain",
-        subDetails: "This process typically takes 10-60 minutes",
+          "🏆 Winner is being permanently inscribed on Bitcoin blockchain",
+        subDetails: "This champion survived the competitive elimination!",
       };
     }
 
     if (status === "expired") {
       return {
-        text: "⏰ Proposal expired without inscription",
-        color: "text-orange-400",
-        bg: "bg-orange-500/20 border-orange-500/30",
-        icon: "⏰",
+        text: "💀 ELIMINATED from competition",
+        color: "text-red-400",
+        bg: "bg-red-500/20 border-red-500/30",
+        icon: "💀",
         phase: "expired",
+        details: "Failed to maintain #1 position long enough",
+        subDetails: "Only the strongest proposals survive to inscription",
       };
     }
 
@@ -133,31 +137,31 @@ export function ProposalCard({
     const steps = [
       {
         key: "active",
-        label: "Voting",
-        icon: "🗳️",
+        label: "Battle",
+        icon: "⚔️",
         completed: status !== "expired",
-        description: "Community voting phase",
+        description: "Fighting for #1 position",
       },
       {
         key: "leader",
-        label: "Leading",
+        label: "Survival",
         icon: "👑",
         completed:
           status === "leader" ||
           status === "inscribing" ||
           status === "inscribed",
-        description: "Currently leading the vote",
+        description: "Defending leadership for 2 blocks",
       },
       {
         key: "inscribing",
-        label: "Inscribing",
+        label: "Champion",
         icon: "⚡",
         completed: status === "inscribing" || status === "inscribed",
-        description: "Being inscribed on Bitcoin",
+        description: "Winner being inscribed",
       },
       {
         key: "inscribed",
-        label: "Complete",
+        label: "Immortal",
         icon: "🏆",
         completed: status === "inscribed",
         description: "Permanently on Bitcoin",
@@ -171,17 +175,17 @@ export function ProposalCard({
       <div className="mb-4 rounded-lg border border-white/10 bg-white/5 p-4">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-xs font-medium text-gray-300">
-            Inscription Progress
+            Competitive Elimination Progress
           </span>
           {autoStatus?.phase && (
             <span
               className={`rounded px-2 py-1 text-xs font-medium ${autoStatus.bg} ${autoStatus.color}`}
             >
-              {autoStatus.phase === "voting" && "Voting Phase"}
-              {autoStatus.phase === "leading" && "Leading Phase"}
-              {autoStatus.phase === "ready" && "Ready for Inscription"}
-              {autoStatus.phase === "inscribing" && "Inscribing"}
-              {autoStatus.phase === "expired" && "Expired"}
+              {autoStatus.phase === "voting" && "Battle Phase"}
+              {autoStatus.phase === "leading" && "Survival Phase"}
+              {autoStatus.phase === "ready" && "Champion Ready"}
+              {autoStatus.phase === "inscribing" && "Champion Inscription"}
+              {autoStatus.phase === "expired" && "Eliminated"}
             </span>
           )}
         </div>
@@ -199,10 +203,16 @@ export function ProposalCard({
                     ? "scale-110 border-green-500/50 bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20"
                     : currentStepIndex === index
                       ? "animate-pulse border-blue-500/50 bg-blue-500/20 text-blue-400 shadow-lg shadow-blue-500/20"
-                      : "border-gray-500/50 bg-gray-500/20 text-gray-500"
+                      : status === "expired" && step.key === "active"
+                        ? "border-red-500/50 bg-red-500/20 text-red-400"
+                        : "border-gray-500/50 bg-gray-500/20 text-gray-500"
                 }`}
               >
-                {step.completed ? "✓" : step.icon}
+                {step.completed
+                  ? "✓"
+                  : status === "expired" && step.key === "active"
+                    ? "💀"
+                    : step.icon}
               </div>
               <span
                 className={`text-center text-xs whitespace-nowrap transition-colors duration-300 ${
@@ -210,7 +220,9 @@ export function ProposalCard({
                     ? "font-medium text-green-400"
                     : currentStepIndex === index
                       ? "font-medium text-blue-400"
-                      : "text-gray-500"
+                      : status === "expired" && step.key === "active"
+                        ? "font-medium text-red-400"
+                        : "text-gray-500"
                 }`}
               >
                 {step.label}
@@ -224,7 +236,11 @@ export function ProposalCard({
               width: `${(steps.filter((s) => s.completed).length / steps.length) * 100}%`,
             }}
             transition={{ duration: 1.2, ease: "easeOut" }}
-            className="absolute top-4 left-0 h-1 rounded bg-gradient-to-r from-green-500 to-emerald-400 shadow-sm"
+            className={`absolute top-4 left-0 h-1 rounded shadow-sm ${
+              status === "expired"
+                ? "bg-gradient-to-r from-red-500 to-red-600"
+                : "bg-gradient-to-r from-green-500 to-emerald-400"
+            }`}
           />
         </div>
         {autoStatus && (
@@ -258,7 +274,7 @@ export function ProposalCard({
                     />
                   </div>
                   <div className="mt-1 text-center text-xs text-gray-500">
-                    Leadership Progress: {Math.round(autoStatus.progress)}%
+                    Survival Progress: {Math.round(autoStatus.progress)}%
                   </div>
                 </div>
               )}
@@ -303,7 +319,7 @@ export function ProposalCard({
             >
               🏆
             </motion.span>
-            <span>Permanently Inscribed</span>
+            <span>CHAMPION INSCRIBED</span>
           </div>
         );
       case "inscribing":
@@ -316,7 +332,7 @@ export function ProposalCard({
                 className="h-3 w-3 rounded-full border-2 border-blue-400/30 border-t-blue-400"
               />
             </div>
-            <span>Bitcoin Inscription in Progress</span>
+            <span>Champion Inscription</span>
           </div>
         );
       case "leader":
@@ -329,14 +345,14 @@ export function ProposalCard({
             >
               👑
             </motion.span>
-            <span>Current Leader</span>
+            <span>DEFENDING LEADERSHIP</span>
             {autoStatus?.phase === "ready" && (
               <motion.span
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 1, repeat: Infinity }}
                 className="rounded border border-green-500/30 bg-green-500/20 px-2 py-0.5 text-xs text-green-400"
               >
-                Ready!
+                Survived!
               </motion.span>
             )}
           </div>
@@ -350,9 +366,9 @@ export function ProposalCard({
         );
       case "expired":
         return (
-          <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/20 px-4 py-2 text-sm font-medium text-orange-400">
-            <span className="text-base">⏰</span>
-            <span>Expired</span>
+          <div className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/20 px-4 py-2 text-sm font-medium text-red-400">
+            <span className="text-base">💀</span>
+            <span>ELIMINATED</span>
           </div>
         );
       default:
@@ -363,9 +379,9 @@ export function ProposalCard({
               transition={{ duration: 1.5, repeat: Infinity }}
               className="text-base"
             >
-              🔥
+              ⚔️
             </motion.span>
-            <span>Active Voting</span>
+            <span>Battle for #1</span>
           </div>
         );
     }
@@ -449,29 +465,27 @@ export function ProposalCard({
           )}
         </div>
         {status === "inscribed" && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-400">Final Results</span>
-              <span className="font-semibold text-white">
-                {totalVotes === 1
-                  ? "1 vote"
-                  : `${totalVotes.toLocaleString()} votes`}
+          <div className="space-y-3">
+            <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-green-500/30 bg-green-500/20 px-4 py-3 text-sm font-semibold text-green-400">
+              <motion.span
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="text-base"
+              >
+                🏆
+              </motion.span>
+              <span>CHAMPION IMMORTALIZED ON BITCOIN</span>
+            </div>
+
+            <div className="rounded-lg bg-gray-800/50 px-3 py-2 text-center text-xs text-gray-400">
+              ✅ This champion survived the competitive elimination and is now
+              permanently on Bitcoin
+            </div>
+            <div className="flex items-center justify-center gap-2 text-xs">
+              <div className="h-2 w-2 rounded-full bg-green-400"></div>
+              <span className="font-medium text-green-400">
+                Victory Complete
               </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-gray-800">
-              <div
-                style={{ width: `${votePercentage}%` }}
-                className="h-full bg-gradient-to-r from-green-500 to-emerald-400"
-              />
-            </div>
-            <div className="flex justify-between text-xs text-gray-400">
-              <span>👍 {votesUp.toLocaleString()}</span>
-              <span>👎 {votesDown.toLocaleString()}</span>
-            </div>
-            <div className="mt-3 rounded-lg border border-green-500/20 bg-green-500/10 p-3">
-              <div className="text-xs text-green-400">
-                ✅ Permanently inscribed on Bitcoin blockchain
-              </div>
             </div>
           </div>
         )}
@@ -606,38 +620,12 @@ export function ProposalCard({
               })()}
             </div>
           )}
-          {status === "inscribed" && (
-            <div className="space-y-3">
-              <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-green-500/30 bg-green-500/20 px-4 py-3 text-sm font-semibold text-green-400">
-                <motion.span
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="text-base"
-                >
-                  🏆
-                </motion.span>
-                <span>Permanently Inscribed on Bitcoin</span>
-              </div>
-
-              <div className="rounded-lg bg-gray-800/50 px-3 py-2 text-center text-xs text-gray-400">
-                ✅ This meme is now permanently stored on the Bitcoin blockchain
-              </div>
-              <div className="flex items-center justify-center gap-2 text-xs">
-                <div className="h-2 w-2 rounded-full bg-green-400"></div>
-                <span className="font-medium text-green-400">
-                  Inscription Complete
-                </span>
-              </div>
-            </div>
-          )}
-
           {status === "expired" && (
-            <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/20 px-4 py-3 text-sm font-semibold text-orange-400">
-              <span className="text-base">⏰</span>
-              <span>Proposal Expired</span>
+            <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/20 px-4 py-3 text-sm font-semibold text-red-400">
+              <span className="text-base">💀</span>
+              <span>ELIMINATED FROM COMPETITION</span>
             </div>
           )}
-
           {status === "rejected" && (
             <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/20 px-4 py-3 text-sm font-semibold text-red-400">
               <span className="text-base">❌</span>
