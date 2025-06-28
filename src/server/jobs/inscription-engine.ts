@@ -81,7 +81,8 @@ class InscriptionEngine {
   async processBlock(blockHeight: number) {
     const block = await esploraService.getBlockByHeight(blockHeight);
     console.log(`📋 Block ${blockHeight} hash: ${block.hash}`);
-    await this.expireAndRemoveOldProposals(blockHeight);
+
+    await this.expireOldProposals(blockHeight);
     const topProposal = await db
       .select()
       .from(proposals)
@@ -94,33 +95,37 @@ class InscriptionEngine {
       return;
     }
 
-    const winner = topProposal[0]!;
+    const currentWinner = topProposal[0]!;
+
+    await this.handleLeadershipChanges(currentWinner, blockHeight);
     const existingInscription = await db
       .select()
       .from(inscriptions)
-      .where(eq(inscriptions.proposalId, winner.id))
+      .where(eq(inscriptions.proposalId, currentWinner.id))
       .limit(1);
 
     if (existingInscription.length > 0) {
-      console.log(`🔄 Proposal ${winner.ticker} already inscribed`);
+      console.log(
+        `🔄 Proposal ${currentWinner.ticker} already has inscription in progress`,
+      );
       return;
     }
 
     const minVotes = 1;
-    if (winner.totalVotes < minVotes) {
+    if (currentWinner.totalVotes < minVotes) {
       console.log(
-        `📊 Proposal ${winner.ticker} has insufficient votes (${winner.totalVotes}/${minVotes})`,
+        `📊 Proposal ${currentWinner.ticker} has insufficient votes (${currentWinner.totalVotes}/${minVotes})`,
       );
       return;
     }
 
     console.log(
-      `🏆 Current leader: ${winner.name} (${winner.ticker}) with ${winner.totalVotes} votes`,
+      `🏆 Current leader: ${currentWinner.name} (${currentWinner.ticker}) with ${currentWinner.totalVotes} votes`,
     );
 
-    if (!winner.firstTimeAsLeader) {
+    if (!currentWinner.firstTimeAsLeader) {
       console.log(
-        `🎯 New leader detected! Setting leadership timestamp for ${winner.ticker}`,
+        `🎯 New champion detected! ${currentWinner.ticker} takes the crown!`,
       );
 
       await db
@@ -133,44 +138,44 @@ class InscriptionEngine {
           expirationBlock: blockHeight + 5,
           updatedAt: new Date(),
         })
-        .where(eq(proposals.id, winner.id));
+        .where(eq(proposals.id, currentWinner.id));
 
       console.log(
-        `⏰ Proposal ${winner.ticker} will be eligible for inscription after 2 blocks (expires in 5 blocks)`,
+        `⏰ ${currentWinner.ticker} must maintain #1 position for 2 blocks to earn inscription (expires in 5 blocks if dethroned)`,
       );
       return;
     }
 
     const blocksAsLeader = await this.getBlocksAsLeader(
-      { leaderStartBlock: winner.leaderStartBlock },
+      { leaderStartBlock: currentWinner.leaderStartBlock },
       blockHeight,
     );
 
     if (blocksAsLeader < 2) {
       console.log(
-        `⏳ Proposal ${winner.ticker} has been leader for ${blocksAsLeader}/2 blocks. Waiting...`,
+        `⏳ ${currentWinner.ticker} defending leadership: ${blocksAsLeader}/2 blocks completed`,
       );
       return;
     }
 
     console.log(
-      `🎉 Proposal ${winner.ticker} is ready for inscription! (${blocksAsLeader} blocks as leader)`,
+      `🎉 INSCRIPTION READY! ${currentWinner.ticker} has successfully maintained #1 position for ${blocksAsLeader} blocks!`,
     );
 
     try {
       const proposalForInscription = {
-        ...winner,
-        website: winner.website ?? undefined,
-        twitter: winner.twitter ?? undefined,
-        telegram: winner.telegram ?? undefined,
-        bannerUrl: winner.bannerUrl ?? undefined,
-        submittedBy: winner.submittedBy ?? undefined,
-        firstTimeAsLeader: winner.firstTimeAsLeader?.toISOString(),
-        leaderStartBlock: winner.leaderStartBlock ?? undefined,
-        leaderboardMinBlocks: winner.leaderboardMinBlocks,
-        expirationBlock: winner.expirationBlock ?? undefined,
-        createdAt: winner.createdAt.toISOString(),
-        updatedAt: winner.updatedAt.toISOString(),
+        ...currentWinner,
+        website: currentWinner.website ?? undefined,
+        twitter: currentWinner.twitter ?? undefined,
+        telegram: currentWinner.telegram ?? undefined,
+        bannerUrl: currentWinner.bannerUrl ?? undefined,
+        submittedBy: currentWinner.submittedBy ?? undefined,
+        firstTimeAsLeader: currentWinner.firstTimeAsLeader?.toISOString(),
+        leaderStartBlock: currentWinner.leaderStartBlock ?? undefined,
+        leaderboardMinBlocks: currentWinner.leaderboardMinBlocks,
+        expirationBlock: currentWinner.expirationBlock ?? undefined,
+        createdAt: currentWinner.createdAt.toISOString(),
+        updatedAt: currentWinner.updatedAt.toISOString(),
       };
 
       await db
@@ -179,9 +184,11 @@ class InscriptionEngine {
           status: "inscribing",
           updatedAt: new Date(),
         })
-        .where(eq(proposals.id, winner.id));
+        .where(eq(proposals.id, currentWinner.id));
 
-      console.log(`🎯 Starting inscription for ${winner.ticker}...`);
+      console.log(
+        `🎯 Starting Bitcoin inscription for champion: ${currentWinner.ticker}...`,
+      );
 
       const inscriptionResult = await inscriptionService.inscribe(
         proposalForInscription,
@@ -189,11 +196,11 @@ class InscriptionEngine {
       );
 
       console.log(
-        `✅ Inscription initiated for ${winner.ticker}: ${inscriptionResult.orderId}`,
+        `✅ Inscription initiated for ${currentWinner.ticker}: ${inscriptionResult.orderId}`,
       );
 
       await db.insert(inscriptions).values({
-        proposalId: winner.id,
+        proposalId: currentWinner.id,
         blockHeight,
         blockHash: block.hash,
         txid: inscriptionResult.txid || "pending",
@@ -206,10 +213,10 @@ class InscriptionEngine {
           type: "meme-coin-inscription",
           block: blockHeight,
           coin: {
-            name: winner.name,
-            ticker: winner.ticker,
-            description: winner.description,
-            votes: winner.totalVotes,
+            name: currentWinner.name,
+            ticker: currentWinner.ticker,
+            description: currentWinner.description,
+            votes: currentWinner.totalVotes,
           },
         }),
         unisatOrderId: inscriptionResult.orderId,
@@ -218,9 +225,14 @@ class InscriptionEngine {
         paymentAmount: inscriptionResult.paymentAmount,
       });
 
-      console.log(`📝 Inscription record created for proposal ${winner.id}`);
+      console.log(
+        `📝 Inscription record created for champion proposal ${currentWinner.id}`,
+      );
     } catch (error) {
-      console.error(`❌ Error inscribing proposal ${winner.ticker}:`, error);
+      console.error(
+        `❌ Error inscribing proposal ${currentWinner.ticker}:`,
+        error,
+      );
 
       await db
         .update(proposals)
@@ -228,15 +240,61 @@ class InscriptionEngine {
           status: "active",
           updatedAt: new Date(),
         })
-        .where(eq(proposals.id, winner.id));
+        .where(eq(proposals.id, currentWinner.id));
 
       console.log(
-        `🔄 Reset proposal ${winner.ticker} status to active due to inscription error`,
+        `🔄 Reset proposal ${currentWinner.ticker} status to active due to inscription error`,
       );
     }
   }
 
-  async expireAndRemoveOldProposals(currentBlockHeight: number) {
+  async handleLeadershipChanges(currentWinner: any, blockHeight: number) {
+    try {
+      const currentLeaders = await db
+        .select()
+        .from(proposals)
+        .where(eq(proposals.status, "leader"));
+
+      const dethronedLeaders = currentLeaders.filter(
+        (leader) => leader.id !== currentWinner.id,
+      );
+
+      if (dethronedLeaders.length > 0) {
+        console.log(
+          `👑 LEADERSHIP CHANGE DETECTED! Dethroning ${dethronedLeaders.length} former leaders...`,
+        );
+
+        for (const dethronedLeader of dethronedLeaders) {
+          const blocksTheyLed =
+            blockHeight - (dethronedLeader.leaderStartBlock || blockHeight);
+
+          console.log(
+            `❌ ${dethronedLeader.ticker} DETHRONED! Lost leadership after ${blocksTheyLed} blocks (needed 2 to survive)`,
+          );
+
+          await db
+            .update(proposals)
+            .set({
+              status: "expired",
+              updatedAt: new Date(),
+            })
+            .where(eq(proposals.id, dethronedLeader.id));
+
+          console.log(
+            `🗑️ ${dethronedLeader.ticker} eliminated from competition - failed to maintain #1 position`,
+          );
+        }
+
+        console.log(
+          `🏆 ${currentWinner.ticker} is now the sole leader with ${currentWinner.totalVotes} votes!`,
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error handling leadership changes:", error);
+    }
+  }
+
+  async expireOldProposals(currentBlockHeight: number) {
     try {
       const expiredProposals = await db
         .select()
@@ -249,12 +307,12 @@ class InscriptionEngine {
 
       if (expiredProposals.length > 0) {
         console.log(
-          `⏰ Found ${expiredProposals.length} expired proposals to remove from leaderboard`,
+          `⏰ Found ${expiredProposals.length} proposals that hit their expiration deadline`,
         );
 
         for (const proposal of expiredProposals) {
           console.log(
-            `🗑️  Removing expired proposal: ${proposal.ticker} (expired at block ${proposal.expirationBlock}, current: ${currentBlockHeight})`,
+            `⏰ TIME'S UP! ${proposal.ticker} failed to get inscribed before expiration block ${proposal.expirationBlock}`,
           );
 
           await db
@@ -266,7 +324,7 @@ class InscriptionEngine {
             .where(eq(proposals.id, proposal.id));
 
           console.log(
-            `❌ Proposal ${proposal.ticker} removed from leaderboard due to expiration`,
+            `❌ ${proposal.ticker} eliminated due to expiration - competition window closed`,
           );
         }
       }
@@ -322,7 +380,7 @@ class InscriptionEngine {
       return;
     }
 
-    console.log("🔧 Manually triggering inscription engine...");
+    console.log("🔧 Manually triggering competitive inscription engine...");
     this.isRunning = true;
     try {
       await this.processNewBlocks();
@@ -344,6 +402,9 @@ class InscriptionEngine {
       const lastProcessedHash = lastProcessed[0]?.lastProcessedHash;
       const lastChecked = lastProcessed[0]?.lastChecked?.toISOString();
 
+      // Get current competition stats
+      const competitionStats = await this.getCompetitionStats();
+
       return {
         isRunning: this.isRunning,
         currentBlock: currentBlockHeight,
@@ -351,6 +412,7 @@ class InscriptionEngine {
         lastProcessedHash,
         lastChecked,
         blocksBehind: Math.max(0, currentBlockHeight - lastProcessedBlock),
+        competition: competitionStats,
       };
     } catch (error) {
       console.error("Error getting inscription engine status:", error);
@@ -363,16 +425,131 @@ class InscriptionEngine {
       };
     }
   }
+
+  async getCompetitionStats() {
+    try {
+      const activeProposals = await db
+        .select()
+        .from(proposals)
+        .where(sql`${proposals.status} IN ('active', 'leader')`)
+        .orderBy(desc(proposals.totalVotes));
+
+      const leaderProposals = await db
+        .select()
+        .from(proposals)
+        .where(eq(proposals.status, "leader"));
+
+      const inscribingProposals = await db
+        .select()
+        .from(proposals)
+        .where(eq(proposals.status, "inscribing"));
+
+      const expiredProposals = await db
+        .select()
+        .from(proposals)
+        .where(eq(proposals.status, "expired"));
+
+      const inscribedProposals = await db
+        .select()
+        .from(proposals)
+        .where(eq(proposals.status, "inscribed"));
+
+      return {
+        totalActive: activeProposals.length,
+        currentLeaders: leaderProposals.length,
+        currentlyInscribing: inscribingProposals.length,
+        totalExpired: expiredProposals.length,
+        totalInscribed: inscribedProposals.length,
+        topProposal: activeProposals[0]
+          ? {
+              ticker: activeProposals[0].ticker,
+              votes: activeProposals[0].totalVotes,
+              status: activeProposals[0].status,
+              blocksAsLeader: activeProposals[0].leaderStartBlock
+                ? Math.max(
+                    0,
+                    (await esploraService.getCurrentBlockHeight()) -
+                      activeProposals[0].leaderStartBlock,
+                  )
+                : 0,
+            }
+          : null,
+      };
+    } catch (error) {
+      console.error("Error getting competition stats:", error);
+      return {
+        totalActive: 0,
+        currentLeaders: 0,
+        currentlyInscribing: 0,
+        totalExpired: 0,
+        totalInscribed: 0,
+        topProposal: null,
+      };
+    }
+  }
+
+  async forceExpireProposal(proposalId: number, reason = "Manual elimination") {
+    try {
+      const proposal = await db
+        .select()
+        .from(proposals)
+        .where(eq(proposals.id, proposalId))
+        .limit(1);
+
+      if (proposal.length === 0) {
+        throw new Error(`Proposal ${proposalId} not found`);
+      }
+
+      const proposalData = proposal[0]!;
+
+      await db
+        .update(proposals)
+        .set({
+          status: "expired",
+          updatedAt: new Date(),
+        })
+        .where(eq(proposals.id, proposalId));
+
+      console.log(
+        `🔨 MANUAL ELIMINATION: ${proposalData.ticker} force-expired. Reason: ${reason}`,
+      );
+
+      return {
+        success: true,
+        message: `Proposal ${proposalData.ticker} has been eliminated`,
+      };
+    } catch (error) {
+      console.error(`Error force expiring proposal ${proposalId}:`, error);
+      throw error;
+    }
+  }
+
+  async resetCompetition(reason = "Competition reset") {
+    try {
+      await db
+        .update(proposals)
+        .set({
+          status: "active",
+          firstTimeAsLeader: null,
+          leaderStartBlock: null,
+          expirationBlock: null,
+          updatedAt: new Date(),
+        })
+        .where(sql`${proposals.status} IN ('leader', 'expired')`);
+
+      console.log(
+        `🔄 COMPETITION RESET: All proposals reset to active. Reason: ${reason}`,
+      );
+
+      return {
+        success: true,
+        message: "Competition has been reset - all proposals are now active",
+      };
+    } catch (error) {
+      console.error("Error resetting competition:", error);
+      throw error;
+    }
+  }
 }
 
 export const inscriptionEngine = new InscriptionEngine();
-
-import "./unisat-monitor";
-
-if (require.main === module) {
-  console.log("🚀 Starting Inscription Engine...");
-  process.on("SIGINT", () => {
-    console.log("👋 Inscription Engine shutting down...");
-    process.exit(0);
-  });
-}
