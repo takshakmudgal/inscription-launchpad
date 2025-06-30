@@ -22,9 +22,11 @@
     "inscription-engine": "node src/server/jobs/inscription-engine.js"
   },
   "dependencies": {
+    "@solana/web3.js": "^1.98.2",
     "@t3-oss/env-nextjs": "^0.12.0",
     "axios": "^1.7.9",
     "bitcoinjs-lib": "^6.1.7",
+    "bs58": "^6.0.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.41.0",

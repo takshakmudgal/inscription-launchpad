@@ -8,6 +8,7 @@ import {
   timestamp,
   pgEnum,
   bigint,
+  serial,
 } from "drizzle-orm/pg-core";
 
 export const createTable = pgTableCreator((name) => `bitmemes_${name}`);
@@ -27,7 +28,7 @@ export const users = createTable(
   {
     id: integer().primaryKey().generatedByDefaultAsIdentity(),
     walletAddress: varchar("wallet_address", { length: 62 }),
-    twitterId: varchar("twitter_id", { length: 50 }), 
+    twitterId: varchar("twitter_id", { length: 50 }),
     username: varchar("username", { length: 50 }),
     email: varchar("email", { length: 255 }),
     twitter: varchar("twitter", { length: 50 }),
@@ -128,7 +129,7 @@ export const inscriptions = createTable(
     totalFees: bigint("total_fees", { mode: "number" }),
     metadata: text("metadata"),
     unisatOrderId: varchar("unisat_order_id", { length: 100 }),
-    orderStatus: varchar("order_status", { length: 50 }), 
+    orderStatus: varchar("order_status", { length: 50 }),
     paymentAddress: text("payment_address"),
     paymentAmount: bigint("payment_amount", { mode: "number" }),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -140,6 +141,27 @@ export const inscriptions = createTable(
     index("inscription_proposal_idx").on(t.proposalId),
     index("inscription_txid_idx").on(t.txid),
     index("inscription_unisat_order_idx").on(t.unisatOrderId),
+  ],
+);
+
+export const pumpFunTokens = createTable(
+  "pump_fun_tokens",
+  {
+    id: serial("id").primaryKey(),
+    proposalId: integer("proposal_id")
+      .notNull()
+      .references(() => proposals.id),
+    mintAddress: text("mint_address").notNull().unique(),
+    transactionSignature: text("transaction_signature").notNull().unique(),
+    metadataUri: text("metadata_uri").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("pump_fun_tokens_proposal_idx").on(t.proposalId),
+    index("pump_fun_tokens_mint_address_idx").on(t.mintAddress),
+    index("pump_fun_tokens_transaction_signature_idx").on(
+      t.transactionSignature,
+    ),
   ],
 );
 

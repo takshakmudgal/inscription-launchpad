@@ -56,8 +56,8 @@ export class EsploraService {
         ? "https://enterprise.blockstream.info/api"
         : "https://enterprise.blockstream.info/testnet/api";
 
-    this.clientId = env.ESPLORA_CLIENT_ID;
-    this.clientSecret = env.ESPLORA_CLIENT_SECRET;
+    this.clientId = env.ESPLORA_CLIENT_ID ?? "";
+    this.clientSecret = env.ESPLORA_CLIENT_SECRET ?? "";
 
     this.axiosInstance = axios.create({
       baseURL: this.enterpriseApiUrl,

@@ -21,9 +21,12 @@ export const env = createEnv({
     PLATFORM_WALLET_PRIVATE_KEY_WIF: z.string().optional(),
     PLATFORM_WALLET_PRIVATE_KEY_HEX: z.string().optional(),
     PLATFORM_WALLET_ADDRESS: z.string().optional(),
-    ESPLORA_CLIENT_ID: z.string(),
-    ESPLORA_CLIENT_SECRET: z.string(),
+    ESPLORA_CLIENT_ID: z.string().optional(),
+    ESPLORA_CLIENT_SECRET: z.string().optional(),
+    HELIUS_RPC_URL: z.string().url(),
+    SOLANA_PLATFORM_WALLET_PRIVATE_KEY: z.string(),
   },
+
   client: {
     NEXT_PUBLIC_BITCOIN_NETWORK: z
       .enum(["mainnet", "testnet"])
@@ -33,6 +36,7 @@ export const env = createEnv({
       .url()
       .default("https://blockstream.info/testnet/api"),
   },
+
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
@@ -53,7 +57,12 @@ export const env = createEnv({
     PLATFORM_WALLET_ADDRESS: process.env.PLATFORM_WALLET_ADDRESS,
     ESPLORA_CLIENT_ID: process.env.ESPLORA_CLIENT_ID,
     ESPLORA_CLIENT_SECRET: process.env.ESPLORA_CLIENT_SECRET,
+    HELIUS_RPC_URL: process.env.HELIUS_RPC_URL,
+    SOLANA_PLATFORM_WALLET_PRIVATE_KEY:
+      process.env.SOLANA_PLATFORM_WALLET_PRIVATE_KEY,
   },
+
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
+
   emptyStringAsUndefined: true,
 });

@@ -4,7 +4,9 @@ import { proposals, inscriptions, blockTracker } from "../db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { esploraService } from "../btc/esplora";
 import { inscriptionService } from "../services/inscription";
+import { pumpFunService } from "../services/pumpfun";
 import { env } from "~/env";
+import type { Proposal } from "~/types";
 
 class InscriptionEngine {
   private isRunning = false;
@@ -163,6 +165,21 @@ class InscriptionEngine {
     );
 
     try {
+      const proposalForPumpFun: Proposal = {
+        ...currentWinner,
+        website: currentWinner.website ?? undefined,
+        twitter: currentWinner.twitter ?? undefined,
+        telegram: currentWinner.telegram ?? undefined,
+        bannerUrl: currentWinner.bannerUrl ?? undefined,
+        submittedBy: currentWinner.submittedBy ?? undefined,
+        firstTimeAsLeader: currentWinner.firstTimeAsLeader?.toISOString(),
+        leaderStartBlock: currentWinner.leaderStartBlock ?? undefined,
+        expirationBlock: currentWinner.expirationBlock ?? undefined,
+        createdAt: currentWinner.createdAt.toISOString(),
+        updatedAt: currentWinner.updatedAt.toISOString(),
+      };
+      void pumpFunService.createToken(proposalForPumpFun);
+
       const proposalForInscription = {
         ...currentWinner,
         website: currentWinner.website ?? undefined,
