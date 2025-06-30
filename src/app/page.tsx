@@ -198,13 +198,15 @@ export default function HomePage() {
     console.log("✅ All proposal data refreshed successfully");
   };
 
-  const handleProposalSubmit = async (proposal: {
+  interface proposal {
     name: string;
     ticker: string;
     description: string;
     imageUrl: string;
     creator: string;
-  }) => {
+  }
+
+  const handleProposalSubmit = async (proposal: proposal) => {
     if (!isConnected) {
       setIsWalletModalOpen(true);
       return;
