@@ -87,9 +87,33 @@ export interface InscriptionRecord {
 }
 
 export interface BlockInfo {
+  id: string;
   height: number;
-  hash: string;
+  version: number;
   timestamp: number;
+  tx_count: number;
+  size: number;
+  weight: number;
+  merkle_root: string;
+  previousblockhash: string;
+  mediantime: number;
+  nonce: number;
+  bits: number;
+  difficulty: number;
+  extras: {
+    totalFees: number;
+    medianFee: number;
+    feeRange: number[];
+  };
+}
+
+export interface UpcomingBlock {
+  blockSize: number;
+  blockVSize: number;
+  nTx: number;
+  totalFees: number;
+  medianFee: number;
+  feeRange: number[];
 }
 
 export interface InscriptionPayload {

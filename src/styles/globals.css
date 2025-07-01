@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+:root {
+  --background: #000000;
+  --foreground: #f5e6d3;
+  --primary: #f97316;
+  /* A slightly more vibrant orange */
+  --primary-dark: #b45309;
+  --border: #422006;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
 @theme {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";

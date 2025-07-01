@@ -3,9 +3,30 @@ import { env } from "~/env";
 import type { BlockInfo, BitcoinTransaction } from "~/types";
 
 interface EsploraBlock {
-  height: number;
   id: string;
+  height: number;
+  version: number;
   timestamp: number;
+  tx_count: number;
+  size: number;
+  weight: number;
+  merkle_root: string;
+  previousblockhash: string;
+  mediantime: number;
+  nonce: number;
+  bits: number;
+  difficulty: number;
+  extras?: {
+    total_fees: number;
+    median_fee: number;
+    fee_range: [number, number];
+    reward: number;
+    pool: {
+      id: number;
+      name: string;
+      slug: string;
+    };
+  };
 }
 
 interface EsploraTransaction {
@@ -37,6 +58,15 @@ interface TokenResponse {
   id_token: string;
   "not-before-policy": number;
   scope: string;
+}
+
+interface UpcomingBlock {
+  feeRange: string;
+  totalFees: number;
+  txCount: number;
+  size: number;
+  avgFee: number;
+  avgFeeRate: number;
 }
 
 export class EsploraService {
@@ -156,6 +186,10 @@ export class EsploraService {
         height: block.height,
         hash: block.id,
         timestamp: block.timestamp,
+        tx_count: block.tx_count,
+        size: block.size,
+        weight: block.weight,
+        total_fees: block.extras?.total_fees ?? 0,
       };
     } catch (error) {
       console.error(`Error fetching block at height ${height}:`, error);
@@ -174,6 +208,10 @@ export class EsploraService {
         height: block.height,
         hash: block.id,
         timestamp: block.timestamp,
+        tx_count: block.tx_count,
+        size: block.size,
+        weight: block.weight,
+        total_fees: block.extras?.total_fees ?? 0,
       };
     } catch (error) {
       console.error(`Error fetching block with hash ${hash}:`, error);
