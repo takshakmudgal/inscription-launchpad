@@ -82,7 +82,7 @@ class InscriptionEngine {
 
   async processBlock(blockHeight: number) {
     const block = await esploraService.getBlockByHeight(blockHeight);
-    console.log(`📋 Block ${blockHeight} hash: ${block.hash}`);
+    console.log(`📋 Block ${blockHeight} hash: ${block.id}`);
 
     await this.expireOldProposals(blockHeight);
     const topProposal = await db
@@ -219,7 +219,7 @@ class InscriptionEngine {
       await db.insert(inscriptions).values({
         proposalId: currentWinner.id,
         blockHeight,
-        blockHash: block.hash,
+        blockHash: block.id,
         txid: inscriptionResult.txid || "pending",
         inscriptionId: inscriptionResult.inscriptionId,
         feeRate: env.INSCRIPTION_FEE_RATE
@@ -372,14 +372,14 @@ class InscriptionEngine {
           .update(blockTracker)
           .set({
             lastProcessedBlock: blockHeight,
-            lastProcessedHash: block.hash,
+            lastProcessedHash: block.id,
             lastChecked: new Date(),
           })
           .where(eq(blockTracker.id, existing[0]!.id));
       } else {
         await db.insert(blockTracker).values({
           lastProcessedBlock: blockHeight,
-          lastProcessedHash: block.hash,
+          lastProcessedHash: block.id,
           lastChecked: new Date(),
         });
       }

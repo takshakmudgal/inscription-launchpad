@@ -67,27 +67,25 @@ export function WalletProvider({ children }: WalletProviderProps) {
   }, [walletAddress]);
 
   const refreshProfile = async () => {
-    if (!walletAddress) return;
-
-    setIsLoadingProfile(true);
-    try {
-      const response = await fetch(
-        `/api/users/profile?walletAddress=${encodeURIComponent(walletAddress)}`,
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          setUserProfile(data.data);
-        }
-      } else if (response.status !== 404) {
-        console.error("Error loading user profile:", response.statusText);
-      }
-    } catch (error) {
-      console.error("Error loading user profile:", error);
-    } finally {
-      setIsLoadingProfile(false);
-    }
+    // if (!walletAddress) return;
+    // setIsLoadingProfile(true);
+    // try {
+    //   const response = await fetch(
+    //     `/api/users/profile?walletAddress=${encodeURIComponent(walletAddress)}`,
+    //   );
+    //   if (response.ok) {
+    //     const data = await response.json();
+    //     if (data.success && data.data) {
+    //       setUserProfile(data.data);
+    //     }
+    //   } else if (response.status !== 404) {
+    //     console.error("Error loading user profile:", response.statusText);
+    //   }
+    // } catch (error) {
+    //   console.error("Error loading user profile:", error);
+    // } finally {
+    //   setIsLoadingProfile(false);
+    // }
   };
 
   const updateProfile = async (profileData: {

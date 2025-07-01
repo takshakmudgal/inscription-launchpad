@@ -183,13 +183,24 @@ export class EsploraService {
       const block = blockResponse.data;
 
       return {
+        id: block.id,
         height: block.height,
-        hash: block.id,
+        version: block.version,
         timestamp: block.timestamp,
         tx_count: block.tx_count,
         size: block.size,
         weight: block.weight,
-        total_fees: block.extras?.total_fees ?? 0,
+        merkle_root: block.merkle_root,
+        previousblockhash: block.previousblockhash,
+        mediantime: block.mediantime,
+        nonce: block.nonce,
+        bits: block.bits,
+        difficulty: block.difficulty,
+        extras: {
+          totalFees: block.extras?.total_fees ?? 0,
+          medianFee: block.extras?.median_fee ?? 0,
+          feeRange: block.extras?.fee_range ?? [0, 0],
+        },
       };
     } catch (error) {
       console.error(`Error fetching block at height ${height}:`, error);
@@ -205,13 +216,24 @@ export class EsploraService {
       const block = response.data;
 
       return {
+        id: block.id,
         height: block.height,
-        hash: block.id,
+        version: block.version,
         timestamp: block.timestamp,
         tx_count: block.tx_count,
         size: block.size,
         weight: block.weight,
-        total_fees: block.extras?.total_fees ?? 0,
+        merkle_root: block.merkle_root,
+        previousblockhash: block.previousblockhash,
+        mediantime: block.mediantime,
+        nonce: block.nonce,
+        bits: block.bits,
+        difficulty: block.difficulty,
+        extras: {
+          totalFees: block.extras?.total_fees ?? 0,
+          medianFee: block.extras?.median_fee ?? 0,
+          feeRange: block.extras?.fee_range ?? [0, 0],
+        },
       };
     } catch (error) {
       console.error(`Error fetching block with hash ${hash}:`, error);
@@ -221,8 +243,30 @@ export class EsploraService {
 
   async getLatestBlock(): Promise<BlockInfo> {
     try {
-      const height = await this.getCurrentBlockHeight();
-      return await this.getBlockByHeight(height);
+      const response =
+        await this.axiosInstance.get<EsploraBlock>("/blocks/tip");
+      const block = response.data;
+
+      return {
+        id: block.id,
+        height: block.height,
+        version: block.version,
+        timestamp: block.timestamp,
+        tx_count: block.tx_count,
+        size: block.size,
+        weight: block.weight,
+        merkle_root: block.merkle_root,
+        previousblockhash: block.previousblockhash,
+        mediantime: block.mediantime,
+        nonce: block.nonce,
+        bits: block.bits,
+        difficulty: block.difficulty,
+        extras: {
+          totalFees: block.extras?.total_fees ?? 0,
+          medianFee: block.extras?.median_fee ?? 0,
+          feeRange: block.extras?.fee_range ?? [0, 0],
+        },
+      };
     } catch (error) {
       console.error("Error fetching latest block:", error);
       throw new Error("Failed to fetch latest block");
