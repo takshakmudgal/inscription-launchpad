@@ -133,25 +133,30 @@ export const BlockCarousel = ({
       const res = await fetch(`/api/blocks/recent?t=${Date.now()}`);
       const data: ApiResponse<RecentBlocksResponse> = await res.json();
       if (data.success && data.data?.blocks) {
-        setConfirmedBlocks((prevBlocks) => {
-          const existingBlockHeights = new Set(prevBlocks.map((b) => b.height));
-          const newBlocks = data.data!.blocks.filter(
-            (b) => !existingBlockHeights.has(b.height),
-          );
-          if (newBlocks.length > 0) {
-            const allBlocks = [...prevBlocks, ...newBlocks].sort(
-              (a, b) => a.height - b.height,
+        if (data.data.blocks.length > 0) {
+          setConfirmedBlocks((prevBlocks) => {
+            const existingBlockHeights = new Set(
+              prevBlocks.map((b) => b.height),
             );
-            return allBlocks.slice(-20);
-          }
-          return prevBlocks;
-        });
+            const newBlocks = data.data!.blocks.filter(
+              (b) => !existingBlockHeights.has(b.height),
+            );
+            if (newBlocks.length > 0) {
+              const allBlocks = [...prevBlocks, ...newBlocks].sort(
+                (a, b) => a.height - b.height,
+              );
+              return allBlocks.slice(-20);
+            }
+            return prevBlocks;
+          });
+        }
         setError(null);
       } else {
         throw new Error(data.error || "Failed to fetch recent blocks");
       }
     } catch (error) {
       console.error("Failed to fetch recent blocks", error);
+      setConfirmedBlocks([]);
       setError(
         error instanceof Error ? error.message : "An unknown error occurred",
       );
