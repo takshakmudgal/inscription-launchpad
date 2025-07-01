@@ -191,6 +191,18 @@ export class EsploraService {
     }
   }
 
+  async getRecentBlocks(count = 12): Promise<BlockInfo[]> {
+    try {
+      const height = await this.getCurrentBlockHeight();
+      const heights = Array.from({ length: count }, (_, i) => height - i);
+      const blocks = await this.getBlocksBatch(heights);
+      return blocks.sort((a, b) => a.height - b.height);
+    } catch (error) {
+      console.error("Error fetching recent blocks:", error);
+      throw new Error("Failed to fetch recent blocks");
+    }
+  }
+
   async getTransaction(txid: string): Promise<BitcoinTransaction> {
     try {
       const response = await this.axiosInstance.get<EsploraTransaction>(

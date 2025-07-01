@@ -14,7 +14,8 @@ import {
 import { UserProfileModal } from "~/components/UserProfileModal";
 import { useWallet } from "~/components/providers";
 import { useBackgroundOrderMonitor } from "~/hooks/useBackgroundOrderMonitor";
-import type { Proposal, ApiResponse } from "~/types";
+import type { Proposal, ApiResponse, BlockInfo } from "~/types";
+import { BlockCarousel } from "~/components/BlockCarousel";
 
 interface ProposalsResponse {
   proposals: Proposal[];
@@ -36,6 +37,14 @@ interface InscriptionStatus {
   paymentAddress?: string;
 }
 
+interface ActiveOrder {
+  orderId: string;
+  proposalId: number;
+  proposalName: string;
+  proposalTicker: string;
+  receiveAddress: string;
+}
+
 export default function HomePage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,7 +56,7 @@ export default function HomePage() {
   const [existingOrderId, setExistingOrderId] = useState<string | undefined>(
     undefined,
   );
-  const [currentBlock, setCurrentBlock] = useState(4546377);
+  const [currentBlock, setCurrentBlock] = useState<BlockInfo | null>(null);
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"trending" | "new" | "top">(
     "trending",
@@ -172,14 +181,6 @@ export default function HomePage() {
 
   useEffect(() => {
     refreshAllData();
-    fetch("/api/blocks/latest")
-      .then((res) => res.json())
-      .then((data: ApiResponse<BlockResponse>) => {
-        if (data.success && data.data?.block?.height) {
-          setCurrentBlock(data.data.block.height);
-        }
-      })
-      .catch(console.error);
     const refreshInterval = setInterval(refreshAllData, 30000);
 
     return () => clearInterval(refreshInterval);
@@ -196,6 +197,12 @@ export default function HomePage() {
     ]);
 
     console.log("✅ All proposal data refreshed successfully");
+  };
+
+  const handleLatestBlock = (block: BlockInfo | null) => {
+    if (block) {
+      setCurrentBlock(block);
+    }
   };
 
   interface proposal {
@@ -459,348 +466,149 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
-      <header className="relative border-b border-white/10 bg-black/50 backdrop-blur-xl">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-black/50 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-xl font-bold text-black shadow-lg">
-                🚀
-              </div>
-              <div>
-                <h1 className="bg-gradient-to-r from-white to-gray-300 bg-clip-text text-2xl font-bold text-transparent">
-                  BitMemes
-                </h1>
-                <p className="text-xs text-gray-400">Meme Contest Platform</p>
-              </div>
-            </motion.div>
-
-            <div className="hidden items-center gap-8 md:flex">
+            <div className="flex items-center space-x-4">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-2xl font-bold"
+              >
+                <span className="text-orange-500">₿</span>
+                <span className="text-white">itMemes</span>
+              </motion.div>
               <div className="text-center">
                 <div className="text-lg font-bold text-white">
-                  {totalVotes.toLocaleString()}
-                </div>
-                <div className="text-xs text-gray-400">Total Votes</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-bold text-white">
-                  {activeProposalsCount}
-                </div>
-                <div className="text-xs text-gray-400">Active</div>
-              </div>
-              {processingProposalsCount > 0 && (
-                <div className="text-center">
-                  <div className="text-lg font-bold text-blue-400">
-                    {processingProposalsCount}
-                  </div>
-                  <div className="text-xs text-gray-400">Processing</div>
-                </div>
-              )}
-              <div className="text-center">
-                <div className="text-lg font-bold text-white">
-                  {inscribedProposalsCount}
-                </div>
-                <div className="text-xs text-gray-400">Inscribed</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-bold text-white">
-                  #{currentBlock.toLocaleString()}
+                  #{currentBlock ? currentBlock.height.toLocaleString() : "..."}
                 </div>
                 <div className="text-xs text-gray-400">Current Block</div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={refreshAllData}
-                className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm font-medium text-blue-400 transition-all hover:bg-blue-500/20"
-                title="Refresh proposal data"
-              >
-                🔄 Refresh
-              </button>
-              {isConnected ? (
+            <div className="flex flex-1 items-center justify-center">
+              <div className="hidden sm:block">
                 <div className="flex items-center gap-3">
-                  <div className="hidden text-right sm:block">
-                    <div className="text-xs text-gray-400">
-                      {userProfile
-                        ? `Hello, ${userProfile.username}`
-                        : "Connected"}
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-white">
+                      {totalVotes.toLocaleString()}
                     </div>
-                    <div className="font-mono text-sm text-white">
-                      {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
-                    </div>
+                    <div className="text-xs text-gray-400">Total Votes</div>
                   </div>
-                  {!hasCompleteProfile && (
-                    <button
-                      onClick={() => setIsProfileModalOpen(true)}
-                      className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs font-medium text-yellow-400 transition-all hover:bg-yellow-500/20"
-                    >
-                      Complete Profile
-                    </button>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-white">
+                      {activeProposalsCount}
+                    </div>
+                    <div className="text-xs text-gray-400">Active</div>
+                  </div>
+                  {processingProposalsCount > 0 && (
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-400">
+                        {processingProposalsCount}
+                      </div>
+                      <div className="text-xs text-gray-400">Processing</div>
+                    </div>
                   )}
-                  <button
-                    onClick={disconnect}
-                    className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-gray-300 transition-all hover:bg-white/10 hover:text-white"
-                  >
-                    Disconnect
-                  </button>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-white">
+                      {inscribedProposalsCount}
+                    </div>
+                    <div className="text-xs text-gray-400">Inscribed</div>
+                  </div>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setIsWalletModalOpen(true)}
-                  className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-400 transition-all hover:bg-orange-500/20"
-                >
-                  🔗 Connect Wallet
-                </button>
-              )}
+              </div>
 
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsModalOpen(true)}
-                className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-bold text-white shadow-lg transition-all hover:from-purple-600 hover:to-pink-600"
-              >
-                🎭 Submit Meme
-              </motion.button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={refreshAllData}
+                  className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm font-medium text-blue-400 transition-all hover:bg-blue-500/20"
+                  title="Refresh proposal data"
+                >
+                  🔄 Refresh
+                </button>
+                {isConnected ? (
+                  <div className="flex items-center gap-3">
+                    <div className="hidden text-right sm:block">
+                      <div className="text-xs text-gray-400">
+                        {userProfile
+                          ? `Hello, ${userProfile.username}`
+                          : "Connected"}
+                      </div>
+                      <div className="font-mono text-sm text-white">
+                        {walletAddress?.slice(0, 6)}...
+                        {walletAddress?.slice(-4)}
+                      </div>
+                    </div>
+                    {!hasCompleteProfile && (
+                      <button
+                        onClick={() => setIsProfileModalOpen(true)}
+                        className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs font-medium text-yellow-400 transition-all hover:bg-yellow-500/20"
+                      >
+                        Complete Profile
+                      </button>
+                    )}
+                    <button
+                      onClick={disconnect}
+                      className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-gray-300 transition-all hover:bg-white/10 hover:text-white"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsWalletModalOpen(true)}
+                    className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-400 transition-all hover:bg-orange-500/20"
+                  >
+                    🔗 Connect Wallet
+                  </button>
+                )}
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsModalOpen(true)}
+                  className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-bold text-white shadow-lg transition-all hover:from-purple-600 hover:to-pink-600"
+                >
+                  🎭 Submit Meme
+                </motion.button>
+              </div>
             </div>
           </div>
         </div>
       </header>
-
-      <section className="relative px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl text-center">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-4xl font-extrabold text-white sm:text-6xl"
-          >
-            The Ultimate
-            <span className="bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
-              {" "}
-              Meme Battle{" "}
-            </span>
-            Arena
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mt-6 text-xl text-gray-300"
-          >
-            Submit your meme coins, vote for the best, and watch winners get
-            inscribed on Bitcoin forever.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="mt-6 flex flex-col justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-4"
-          >
-            <button
-              onClick={() => {
-                if (!isConnected) {
-                  setIsWalletModalOpen(true);
-                } else {
-                  setIsModalOpen(true);
-                }
-              }}
-              className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 text-base font-bold text-white shadow-xl transition-all hover:scale-105 hover:from-purple-600 hover:to-pink-600 sm:px-8 sm:py-4 sm:text-lg"
-            >
-              🚀 Submit Your Meme
-            </button>
-            <button
-              onClick={() =>
-                document
-                  .getElementById("proposals")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-              className="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 sm:px-8 sm:py-4 sm:text-lg"
-            >
-              🗳️ Vote Now
-            </button>
-          </motion.div>
-        </div>
-
-        <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute -top-40 -right-32 h-80 w-80 rounded-full bg-purple-500/20 blur-3xl" />
-          <div className="absolute -bottom-40 -left-32 h-80 w-80 rounded-full bg-pink-500/20 blur-3xl" />
-        </div>
-      </section>
-
-      <section id="proposals" className="px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-12 text-center">
-            <div className="mb-4 flex items-center justify-center gap-4">
-              <h3 className="text-3xl font-bold text-white">
-                🏆 Meme Leaderboard
-              </h3>
-
-              <div className="hidden items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-2 lg:flex">
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="h-2 w-2 animate-pulse rounded-full bg-green-400"></div>
-                  <span className="text-gray-400">Block</span>
-                  <span className="font-mono text-white">
-                    {currentBlock.toLocaleString()}
-                  </span>
-                </div>
-                <div className="text-gray-500">•</div>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-gray-400">Active</span>
-                  <span className="font-semibold text-green-400">
-                    {activeProposalsCount}
-                  </span>
-                </div>
-                {processingProposalsCount > 0 && (
-                  <>
-                    <div className="text-gray-500">•</div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-gray-400">Processing</span>
-                      <span className="font-semibold text-blue-400">
-                        {processingProposalsCount}
-                      </span>
-                    </div>
-                  </>
-                )}
-                {inscribedProposalsCount > 0 && (
-                  <>
-                    <div className="text-gray-500">•</div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-gray-400">Inscribed</span>
-                      <span className="font-semibold text-purple-400">
-                        {inscribedProposalsCount}
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <p className="mt-4 text-gray-400">
-              Vote for your favorite memes. Top proposals get inscribed on
-              Bitcoin!
-            </p>
-
-            <div className="mt-4 flex items-center justify-center gap-4 text-xs lg:hidden">
-              <div className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-400"></div>
-                <span className="text-gray-400">
-                  Block {currentBlock.toLocaleString()}
-                </span>
-              </div>
-              <div className="text-gray-500">•</div>
-              <span className="text-gray-400">
-                {activeProposalsCount} Active
-              </span>
-              {processingProposalsCount > 0 && (
-                <>
-                  <div className="text-gray-500">•</div>
-                  <span className="text-gray-400">
-                    {processingProposalsCount} Processing
-                  </span>
-                </>
-              )}
-              {inscribedProposalsCount > 0 && (
-                <>
-                  <div className="text-gray-500">•</div>
-                  <span className="text-gray-400">
-                    {inscribedProposalsCount} Inscribed
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="mb-6 flex justify-center sm:mb-8">
-            <div className="flex rounded-xl bg-white/5 p-1 backdrop-blur-sm">
-              {[
-                {
-                  key: "trending",
-                  label: "🔥 Trending",
-                  desc: "Hot right now",
-                },
-                { key: "new", label: "✨ New", desc: "Latest submissions" },
-                { key: "top", label: "👑 Top", desc: "Most voted" },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key as typeof activeTab)}
-                  className={`relative rounded-lg px-3 py-2 text-xs font-medium transition-all sm:px-6 sm:py-3 sm:text-sm ${
-                    activeTab === tab.key
-                      ? "bg-white/10 text-white shadow-lg"
-                      : "text-gray-400 hover:text-white"
-                  }`}
-                >
-                  <span className="hidden sm:inline">{tab.label}</span>
-                  <span className="sm:hidden">{tab.label.split(" ")[0]}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
+      <BlockCarousel onLatestBlock={handleLatestBlock} />
+      <main className="container mx-auto p-4">
+        <section className="relative px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <motion.h2
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+              className="text-4xl font-extrabold text-white sm:text-6xl"
             >
-              {getFilteredProposals().map((proposal, index) => (
-                <motion.div
-                  key={`active-${proposal.id}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <ProposalCard
-                    id={proposal.id}
-                    name={proposal.name}
-                    ticker={proposal.ticker}
-                    description={proposal.description}
-                    imageUrl={proposal.imageUrl}
-                    creator={
-                      proposal.submitter?.username
-                        ? userProfile && proposal.submittedBy === userProfile.id
-                          ? `${proposal.submitter.username} (You)`
-                          : proposal.submitter.username
-                        : proposal.submittedBy
-                          ? `User #${proposal.submittedBy}`
-                          : "Anonymous"
-                    }
-                    votesUp={proposal.votesUp}
-                    votesDown={proposal.votesDown}
-                    totalVotes={proposal.totalVotes}
-                    status={proposal.status}
-                    firstTimeAsLeader={proposal.firstTimeAsLeader}
-                    leaderStartBlock={proposal.leaderStartBlock}
-                    leaderboardMinBlocks={proposal.leaderboardMinBlocks}
-                    expirationBlock={proposal.expirationBlock}
-                    currentBlockHeight={currentBlock}
-                    onVote={handleVote}
-                  />
-                </motion.div>
-              ))}
-            </motion.div>
-          </AnimatePresence>
+              The Ultimate
+              <span className="bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
+                {" "}
+                Meme Battle{" "}
+              </span>
+              Arena
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-6 text-xl text-gray-300"
+            >
+              Submit your meme coins, vote for the best, and watch winners get
+              inscribed on Bitcoin forever.
+            </motion.p>
 
-          {getFilteredProposals().length === 0 && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="py-16 text-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="mt-6 flex flex-col justify-center gap-3 sm:mt-8 sm:flex-row sm:gap-4"
             >
-              <div className="mb-4 text-6xl">🎭</div>
-              <h3 className="mb-2 text-xl font-semibold text-white">
-                No active memes yet!
-              </h3>
-              <p className="mb-6 text-gray-400">
-                Be the first to submit a meme proposal
-              </p>
               <button
                 onClick={() => {
                   if (!isConnected) {
@@ -809,180 +617,397 @@ export default function HomePage() {
                     setIsModalOpen(true);
                   }
                 }}
-                className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-bold text-white shadow-lg transition-all hover:from-purple-600 hover:to-pink-600"
+                className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 text-base font-bold text-white shadow-xl transition-all hover:scale-105 hover:from-purple-600 hover:to-pink-600 sm:px-8 sm:py-4 sm:text-lg"
               >
-                🚀 Submit First Meme
+                🚀 Submit Your Meme
+              </button>
+              <button
+                onClick={() =>
+                  document
+                    .getElementById("proposals")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
+                className="rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 sm:px-8 sm:py-4 sm:text-lg"
+              >
+                🗳️ Vote Now
               </button>
             </motion.div>
+          </div>
+
+          <div className="absolute inset-0 -z-10 overflow-hidden">
+            <div className="absolute -top-40 -right-32 h-80 w-80 rounded-full bg-purple-500/20 blur-3xl" />
+            <div className="absolute -bottom-40 -left-32 h-80 w-80 rounded-full bg-pink-500/20 blur-3xl" />
+          </div>
+        </section>
+
+        <section id="proposals" className="px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-12 text-center">
+              <div className="mb-4 flex items-center justify-center gap-4">
+                <h3 className="text-3xl font-bold text-white">
+                  🏆 Meme Leaderboard
+                </h3>
+
+                <div className="hidden items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-2 lg:flex">
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="h-2 w-2 animate-pulse rounded-full bg-green-400"></div>
+                    <span className="text-gray-400">Block</span>
+                    <span className="font-mono text-white">
+                      {currentBlock?.height.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="text-gray-500">•</div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-400">Active</span>
+                    <span className="font-semibold text-green-400">
+                      {activeProposalsCount}
+                    </span>
+                  </div>
+                  {processingProposalsCount > 0 && (
+                    <>
+                      <div className="text-gray-500">•</div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-gray-400">Processing</span>
+                        <span className="font-semibold text-blue-400">
+                          {processingProposalsCount}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  {inscribedProposalsCount > 0 && (
+                    <>
+                      <div className="text-gray-500">•</div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-gray-400">Inscribed</span>
+                        <span className="font-semibold text-purple-400">
+                          {inscribedProposalsCount}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <p className="mt-4 text-gray-400">
+                Vote for your favorite memes. Top proposals get inscribed on
+                Bitcoin!
+              </p>
+
+              <div className="mt-4 flex items-center justify-center gap-4 text-xs lg:hidden">
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-400"></div>
+                  <span className="text-gray-400">
+                    Block {currentBlock?.height.toLocaleString()}
+                  </span>
+                </div>
+                <div className="text-gray-500">•</div>
+                <span className="text-gray-400">
+                  {activeProposalsCount} Active
+                </span>
+                {processingProposalsCount > 0 && (
+                  <>
+                    <div className="text-gray-500">•</div>
+                    <span className="text-gray-400">
+                      {processingProposalsCount} Processing
+                    </span>
+                  </>
+                )}
+                {inscribedProposalsCount > 0 && (
+                  <>
+                    <div className="text-gray-500">•</div>
+                    <span className="text-gray-400">
+                      {inscribedProposalsCount} Inscribed
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-6 flex justify-center sm:mb-8">
+              <div className="flex rounded-xl bg-white/5 p-1 backdrop-blur-sm">
+                {[
+                  {
+                    key: "trending",
+                    label: "🔥 Trending",
+                    desc: "Hot right now",
+                  },
+                  { key: "new", label: "✨ New", desc: "Latest submissions" },
+                  { key: "top", label: "👑 Top", desc: "Most voted" },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key as typeof activeTab)}
+                    className={`relative rounded-lg px-3 py-2 text-xs font-medium transition-all sm:px-6 sm:py-3 sm:text-sm ${
+                      activeTab === tab.key
+                        ? "bg-white/10 text-white shadow-lg"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    <span className="hidden sm:inline">{tab.label}</span>
+                    <span className="sm:hidden">{tab.label.split(" ")[0]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+              >
+                {getFilteredProposals().map((proposal, index) => (
+                  <motion.div
+                    key={`active-${proposal.id}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <ProposalCard
+                      id={proposal.id}
+                      name={proposal.name}
+                      ticker={proposal.ticker}
+                      description={proposal.description}
+                      imageUrl={proposal.imageUrl}
+                      creator={
+                        proposal.submitter?.username
+                          ? userProfile &&
+                            proposal.submittedBy === userProfile.id
+                            ? `${proposal.submitter.username} (You)`
+                            : proposal.submitter.username
+                          : proposal.submittedBy
+                            ? `User #${proposal.submittedBy}`
+                            : "Anonymous"
+                      }
+                      votesUp={proposal.votesUp}
+                      votesDown={proposal.votesDown}
+                      totalVotes={proposal.totalVotes}
+                      status={proposal.status}
+                      firstTimeAsLeader={proposal.firstTimeAsLeader}
+                      leaderStartBlock={proposal.leaderStartBlock}
+                      leaderboardMinBlocks={proposal.leaderboardMinBlocks}
+                      expirationBlock={proposal.expirationBlock}
+                      currentBlockHeight={currentBlock?.height}
+                      onVote={handleVote}
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+
+            {getFilteredProposals().length === 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-16 text-center"
+              >
+                <div className="mb-4 text-6xl">🎭</div>
+                <h3 className="mb-2 text-xl font-semibold text-white">
+                  No active memes yet!
+                </h3>
+                <p className="mb-6 text-gray-400">
+                  Be the first to submit a meme proposal
+                </p>
+                <button
+                  onClick={() => {
+                    if (!isConnected) {
+                      setIsWalletModalOpen(true);
+                    } else {
+                      setIsModalOpen(true);
+                    }
+                  }}
+                  className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-bold text-white shadow-lg transition-all hover:from-purple-600 hover:to-pink-600"
+                >
+                  🚀 Submit First Meme
+                </button>
+              </motion.div>
+            )}
+          </div>
+        </section>
+
+        {getProcessingProposals().length > 0 && (
+          <section className="bg-gradient-to-r from-blue-900/10 to-purple-900/10 px-4 py-16 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-7xl">
+              <div className="mb-12 text-center">
+                <div className="mb-4 flex items-center justify-center gap-4">
+                  <h3 className="text-3xl font-bold text-white">
+                    ⚡ Processing Inscriptions
+                  </h3>
+                  <div className="flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2">
+                    <div className="h-2 w-2 animate-pulse rounded-full bg-blue-400"></div>
+                    <span className="text-sm font-medium text-blue-400">
+                      {getProcessingProposals().length} Processing
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-4 text-gray-400">
+                  These memes are currently being inscribed on the Bitcoin
+                  blockchain. This process typically takes a few minutes.
+                </p>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {getProcessingProposals().map((proposal, index) => (
+                  <motion.div
+                    key={`processing-${proposal.id}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <ProposalCard
+                      id={proposal.id}
+                      name={proposal.name}
+                      ticker={proposal.ticker}
+                      description={proposal.description}
+                      imageUrl={proposal.imageUrl}
+                      creator={
+                        proposal.submitter?.username
+                          ? userProfile &&
+                            proposal.submittedBy === userProfile.id
+                            ? `${proposal.submitter.username} (You)`
+                            : proposal.submitter.username
+                          : proposal.submittedBy
+                            ? `User #${proposal.submittedBy}`
+                            : "Anonymous"
+                      }
+                      votesUp={proposal.votesUp}
+                      votesDown={proposal.votesDown}
+                      totalVotes={proposal.totalVotes}
+                      status={proposal.status}
+                      firstTimeAsLeader={proposal.firstTimeAsLeader}
+                      leaderStartBlock={proposal.leaderStartBlock}
+                      leaderboardMinBlocks={proposal.leaderboardMinBlocks}
+                      expirationBlock={proposal.expirationBlock}
+                      currentBlockHeight={currentBlock?.height}
+                      onVote={handleVote}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {getInscribedProposals().length > 0 && (
+          <section className="px-4 py-16 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-7xl">
+              <div className="mb-12 text-center">
+                <div className="mb-4 flex items-center justify-center gap-4">
+                  <h3 className="text-3xl font-bold text-white">
+                    🏆 Bitcoin Inscriptions
+                  </h3>
+                  <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2">
+                    <div className="h-2 w-2 rounded-full bg-green-400"></div>
+                    <span className="text-sm font-medium text-green-400">
+                      {inscribedProposalsCount} Inscribed
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-4 text-gray-400">
+                  Memes that made it! These proposals have been permanently
+                  inscribed on Bitcoin.
+                </p>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {getInscribedProposals().map((proposal, index) => (
+                  <motion.div
+                    key={`inscribed-${proposal.id}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <ProposalCard
+                      id={proposal.id}
+                      name={proposal.name}
+                      ticker={proposal.ticker}
+                      description={proposal.description}
+                      imageUrl={proposal.imageUrl}
+                      creator={
+                        proposal.submitter?.username
+                          ? userProfile &&
+                            proposal.submittedBy === userProfile.id
+                            ? `${proposal.submitter.username} (You)`
+                            : proposal.submitter.username
+                          : proposal.submittedBy
+                            ? `User #${proposal.submittedBy}`
+                            : "Anonymous"
+                      }
+                      votesUp={proposal.votesUp}
+                      votesDown={proposal.votesDown}
+                      totalVotes={proposal.totalVotes}
+                      status={proposal.status}
+                      firstTimeAsLeader={proposal.firstTimeAsLeader}
+                      leaderStartBlock={proposal.leaderStartBlock}
+                      leaderboardMinBlocks={proposal.leaderboardMinBlocks}
+                      expirationBlock={proposal.expirationBlock}
+                      currentBlockHeight={currentBlock?.height}
+                      onVote={handleVote}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        <SubmitProposalModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleProposalSubmit}
+        />
+
+        <WalletConnectModal
+          isOpen={isWalletModalOpen}
+          onClose={() => setIsWalletModalOpen(false)}
+        />
+
+        {selectedProposal && walletAddress && (
+          <InscriptionModal
+            isOpen={isInscriptionModalOpen}
+            onClose={() => {
+              setIsInscriptionModalOpen(false);
+              setSelectedProposal(null);
+              setExistingOrderId(undefined);
+            }}
+            proposalId={selectedProposal.id}
+            proposalName={selectedProposal.name}
+            proposalTicker={selectedProposal.ticker}
+            receiveAddress={walletAddress}
+            existingOrderId={existingOrderId}
+          />
+        )}
+
+        <div className="flex-shrink-0">
+          {isConnected && (
+            <ActiveOrdersWidget onResumeOrder={handleResumeOrder} />
+          )}
+          {walletAddress && (
+            <UserProfileModal
+              isOpen={isProfileModalOpen}
+              onClose={() => setIsProfileModalOpen(false)}
+              onSubmit={handleProfileSubmit}
+              walletAddress={walletAddress}
+              isRequired={!hasCompleteProfile}
+            />
           )}
         </div>
-      </section>
-
-      {getProcessingProposals().length > 0 && (
-        <section className="bg-gradient-to-r from-blue-900/10 to-purple-900/10 px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-12 text-center">
-              <div className="mb-4 flex items-center justify-center gap-4">
-                <h3 className="text-3xl font-bold text-white">
-                  ⚡ Processing Inscriptions
-                </h3>
-                <div className="flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2">
-                  <div className="h-2 w-2 animate-pulse rounded-full bg-blue-400"></div>
-                  <span className="text-sm font-medium text-blue-400">
-                    {getProcessingProposals().length} Processing
-                  </span>
-                </div>
-              </div>
-              <p className="mt-4 text-gray-400">
-                These memes are currently being inscribed on the Bitcoin
-                blockchain. This process typically takes a few minutes.
-              </p>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {getProcessingProposals().map((proposal, index) => (
-                <motion.div
-                  key={`processing-${proposal.id}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <ProposalCard
-                    id={proposal.id}
-                    name={proposal.name}
-                    ticker={proposal.ticker}
-                    description={proposal.description}
-                    imageUrl={proposal.imageUrl}
-                    creator={
-                      proposal.submitter?.username
-                        ? userProfile && proposal.submittedBy === userProfile.id
-                          ? `${proposal.submitter.username} (You)`
-                          : proposal.submitter.username
-                        : proposal.submittedBy
-                          ? `User #${proposal.submittedBy}`
-                          : "Anonymous"
-                    }
-                    votesUp={proposal.votesUp}
-                    votesDown={proposal.votesDown}
-                    totalVotes={proposal.totalVotes}
-                    status={proposal.status}
-                    firstTimeAsLeader={proposal.firstTimeAsLeader}
-                    leaderStartBlock={proposal.leaderStartBlock}
-                    leaderboardMinBlocks={proposal.leaderboardMinBlocks}
-                    expirationBlock={proposal.expirationBlock}
-                    currentBlockHeight={currentBlock}
-                    onVote={handleVote}
-                  />
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {getInscribedProposals().length > 0 && (
-        <section className="px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-12 text-center">
-              <div className="mb-4 flex items-center justify-center gap-4">
-                <h3 className="text-3xl font-bold text-white">
-                  🏆 Bitcoin Inscriptions
-                </h3>
-                <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2">
-                  <div className="h-2 w-2 rounded-full bg-green-400"></div>
-                  <span className="text-sm font-medium text-green-400">
-                    {inscribedProposalsCount} Inscribed
-                  </span>
-                </div>
-              </div>
-              <p className="mt-4 text-gray-400">
-                Memes that made it! These proposals have been permanently
-                inscribed on Bitcoin.
-              </p>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {getInscribedProposals().map((proposal, index) => (
-                <motion.div
-                  key={`inscribed-${proposal.id}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <ProposalCard
-                    id={proposal.id}
-                    name={proposal.name}
-                    ticker={proposal.ticker}
-                    description={proposal.description}
-                    imageUrl={proposal.imageUrl}
-                    creator={
-                      proposal.submitter?.username
-                        ? userProfile && proposal.submittedBy === userProfile.id
-                          ? `${proposal.submitter.username} (You)`
-                          : proposal.submitter.username
-                        : proposal.submittedBy
-                          ? `User #${proposal.submittedBy}`
-                          : "Anonymous"
-                    }
-                    votesUp={proposal.votesUp}
-                    votesDown={proposal.votesDown}
-                    totalVotes={proposal.totalVotes}
-                    status={proposal.status}
-                    firstTimeAsLeader={proposal.firstTimeAsLeader}
-                    leaderStartBlock={proposal.leaderStartBlock}
-                    leaderboardMinBlocks={proposal.leaderboardMinBlocks}
-                    expirationBlock={proposal.expirationBlock}
-                    currentBlockHeight={currentBlock}
-                    onVote={handleVote}
-                  />
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      <SubmitProposalModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleProposalSubmit}
-      />
-
-      <WalletConnectModal
-        isOpen={isWalletModalOpen}
-        onClose={() => setIsWalletModalOpen(false)}
-      />
-
-      {selectedProposal && walletAddress && (
-        <InscriptionModal
-          isOpen={isInscriptionModalOpen}
-          onClose={() => {
-            setIsInscriptionModalOpen(false);
-            setSelectedProposal(null);
-            setExistingOrderId(undefined);
-          }}
-          proposalId={selectedProposal.id}
-          proposalName={selectedProposal.name}
-          proposalTicker={selectedProposal.ticker}
-          receiveAddress={walletAddress}
-          existingOrderId={existingOrderId}
+        <OrderNotification
+          notifications={notifications}
+          onRemove={removeNotification}
         />
-      )}
+      </main>
 
-      {isConnected && <ActiveOrdersWidget onResumeOrder={handleResumeOrder} />}
-      {walletAddress && (
-        <UserProfileModal
-          isOpen={isProfileModalOpen}
-          onClose={() => setIsProfileModalOpen(false)}
-          onSubmit={handleProfileSubmit}
-          walletAddress={walletAddress}
-          isRequired={!hasCompleteProfile}
+      <div className="pointer-events-none fixed right-4 bottom-4 z-50 flex flex-col items-end space-y-2">
+        <OrderNotification
+          notifications={notifications}
+          onRemove={removeNotification}
         />
-      )}
-      <OrderNotification
-        notifications={notifications}
-        onRemove={removeNotification}
-      />
+        <ActiveOrdersWidget onResumeOrder={handleResumeOrder} />
+      </div>
     </div>
   );
 }
