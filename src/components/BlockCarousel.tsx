@@ -13,96 +13,56 @@ interface UpcomingBlocksResponse {
   blocks: UpcomingBlock[];
 }
 
-const UpcomingBlockCard = ({
-  block,
-  index,
-}: {
-  block: UpcomingBlock;
-  index: number;
-}) => {
-  const { feeRange, totalFees, nTx } = block;
-  let feeText = "N/A";
-  if (feeRange && feeRange.length > 1) {
-    const first = feeRange[0];
-    const last = feeRange[feeRange.length - 1];
-    if (first !== undefined && last !== undefined) {
-      feeText = `~${first.toFixed(0)} - ${last.toFixed(0)} sat/vB`;
-    }
-  } else if (feeRange && feeRange.length === 1) {
-    const first = feeRange[0];
-    if (first !== undefined) {
-      feeText = `~${first.toFixed(0)} sat/vB`;
-    }
-  }
+interface CarouselBlock {
+  height: number;
+  tx_count: number;
+  isUpcoming: boolean;
+  isLatestConfirmed: boolean;
+  timestamp?: number;
+  totalFees?: number;
+  blockSize?: number;
+}
 
-  return (
-    <div className="mr-4 flex h-36 w-40 flex-shrink-0 flex-col justify-between rounded-lg border border-red-500/40 bg-red-900/30 p-2 shadow-md sm:h-40 sm:w-48 sm:p-3">
-      <div className="text-center font-mono text-xs text-gray-300 sm:text-sm">
-        {feeText}
-      </div>
-      <hr className="my-2 border-t border-white/10" />
-      <div className="space-y-1 text-center font-mono text-white">
-        <div className="text-base font-bold sm:text-lg">
-          {(totalFees / 100_000_000).toFixed(3)} tBTC
-        </div>
-        <div className="text-2xs text-gray-400 sm:text-xs">
-          {nTx.toLocaleString()} transactions
-        </div>
-      </div>
-      <hr className="my-2 border-t border-white/10" />
-      <div className="text-2xs text-center font-mono text-red-400 sm:text-xs">
-        In ~{(index + 1) * 10} minutes
-      </div>
-    </div>
-  );
-};
+const BlockCard = ({ block }: { block: CarouselBlock }) => {
+  const timeAgo = block.timestamp
+    ? formatDistanceToNow(new Date(block.timestamp * 1000), {
+        addSuffix: true,
+      })
+    : null;
 
-const Separator = () => (
-  <div className="flex h-36 w-8 flex-shrink-0 flex-col items-center justify-center px-1 sm:h-40 sm:w-10 sm:px-2">
-    <div className="text-base font-thin text-gray-400 sm:text-lg">↑</div>
-    <div className="h-full w-px bg-white/20"></div>
-    <div className="text-base font-thin text-gray-400 sm:text-lg">↓</div>
-  </div>
-);
-
-const BlockCard = ({
-  block,
-  isLatest,
-}: {
-  block: BlockInfo;
-  isLatest: boolean;
-}) => {
-  const timeAgo = formatDistanceToNow(new Date((block.timestamp ?? 0) * 1000), {
-    addSuffix: true,
-  });
+  const cardClasses = block.isUpcoming
+    ? "border-dashed border-blue-500/40 bg-blue-900/20"
+    : "border-[#f3814b]/40 bg-[#2e1f1a]/50";
 
   return (
     <div className="relative pb-1">
-      <div className="mr-4 flex h-36 w-40 flex-shrink-0 cursor-grab flex-col justify-between rounded-lg border border-[#f3814b]/40 bg-[#2e1f1a]/50 p-2 shadow-md transition-transform duration-300 ease-in-out active:cursor-grabbing sm:h-40 sm:w-48 sm:p-3">
+      <div
+        className={`mr-2 flex h-32 w-36 flex-shrink-0 cursor-grab flex-col justify-between rounded-lg border ${cardClasses} p-2 shadow-md transition-transform duration-300 ease-in-out active:cursor-grabbing sm:h-40 sm:w-48 sm:p-3`}
+      >
         <div className="text-center">
-          <div className="font-mono text-xl font-bold text-white sm:text-2xl">
-            {block.height}
+          <div className="font-mono text-lg font-bold text-white sm:text-2xl">
+            {block.isUpcoming ? `~${block.height}` : block.height}
           </div>
         </div>
 
-        <hr className="my-2 border-t border-white/10" />
+        <hr className="my-1 border-t border-white/10 sm:my-2" />
 
         <div className="space-y-1 text-center font-mono text-white">
-          <div className="text-base font-bold sm:text-lg">
-            {((block.extras?.totalFees ?? 0) / 100_000_000).toFixed(3)} tBTC
+          <div className="text-sm font-bold sm:text-lg">
+            {`${((block.totalFees ?? 0) / 100_000_000).toFixed(3)} tBTC`}
           </div>
-          <div className="text-2xs text-gray-400 sm:text-xs">
+          <div className="text-[10px] text-gray-400 sm:text-xs">
             {(block.tx_count ?? 0).toLocaleString()} transactions
           </div>
         </div>
 
-        <hr className="my-2 border-t border-white/10" />
+        <hr className="my-1 border-t border-white/10 sm:my-2" />
 
-        <div className="text-2xs text-center font-mono text-orange-400 sm:text-xs">
-          {timeAgo}
+        <div className="text-center font-mono text-[10px] text-orange-400 sm:text-xs">
+          {block.isUpcoming ? "Upcoming" : timeAgo}
         </div>
       </div>
-      {isLatest && (
+      {block.isLatestConfirmed && (
         <motion.div
           className="absolute top-full left-1/2 mt-1 -translate-x-1/2"
           initial={{ opacity: 0, y: -10 }}
@@ -122,28 +82,27 @@ export const BlockCarousel = ({
   onLatestBlock: (block: BlockInfo | null) => void;
 }) => {
   const [confirmedBlocks, setConfirmedBlocks] = useState<BlockInfo[]>([]);
-  const [upcomingBlocks, setUpcomingBlocks] = useState<UpcomingBlock[]>([]);
+  const [upcomingBlock, setUpcomingBlock] = useState<UpcomingBlock | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
-  const constraintsRef = useRef<HTMLDivElement>(null);
 
   const fetchConfirmedBlocks = useCallback(async () => {
     try {
       const res = await fetch(`/api/blocks/recent?t=${Date.now()}`);
+      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
       const data: ApiResponse<RecentBlocksResponse> = await res.json();
       if (data.success && data.data?.blocks) {
         setConfirmedBlocks((prevBlocks) => {
           const blockMap = new Map(prevBlocks.map((b) => [b.height, b]));
-
           for (const newBlock of data.data!.blocks) {
             blockMap.set(newBlock.height, newBlock);
           }
-
           const allBlocks = Array.from(blockMap.values()).sort(
             (a, b) => a.height - b.height,
           );
-
           return allBlocks.slice(-20);
         });
         setError(null);
@@ -160,43 +119,79 @@ export const BlockCarousel = ({
     }
   }, []);
 
-  const fetchUpcomingBlocks = useCallback(async () => {
+  const fetchUpcomingBlock = useCallback(async () => {
     try {
       const res = await fetch(`/api/blocks/upcoming?t=${Date.now()}`);
+      if (!res.ok) {
+        setUpcomingBlock(null);
+        return;
+      }
       const data: ApiResponse<UpcomingBlocksResponse> = await res.json();
-      if (data.success && data.data?.blocks) {
-        setUpcomingBlocks(data.data.blocks.slice(0, 3));
+      if (data.success && data.data?.blocks && data.data.blocks.length > 0) {
+        setUpcomingBlock(data.data.blocks[0]!);
+      } else {
+        setUpcomingBlock(null);
       }
     } catch (error) {
-      console.error("Failed to fetch upcoming blocks", error);
+      console.error("Failed to fetch upcoming block", error);
+      setUpcomingBlock(null);
     }
   }, []);
 
   useEffect(() => {
-    if (confirmedBlocks.length > 0) {
-      onLatestBlock(confirmedBlocks[confirmedBlocks.length - 1] ?? null);
-    }
+    const latestBlock =
+      confirmedBlocks.length > 0
+        ? confirmedBlocks[confirmedBlocks.length - 1]
+        : null;
+    onLatestBlock(latestBlock ?? null);
   }, [confirmedBlocks, onLatestBlock]);
 
   useEffect(() => {
     void fetchConfirmedBlocks();
-    void fetchUpcomingBlocks();
+    void fetchUpcomingBlock();
     const interval = setInterval(() => {
       void fetchConfirmedBlocks();
-      void fetchUpcomingBlocks();
+      void fetchUpcomingBlock();
     }, 12000);
     return () => clearInterval(interval);
-  }, [fetchConfirmedBlocks, fetchUpcomingBlocks]);
+  }, [fetchConfirmedBlocks, fetchUpcomingBlock]);
 
   useEffect(() => {
-    if (!isLoading && carouselRef.current) {
+    if (carouselRef.current) {
       const el = carouselRef.current;
-      el.scrollTo({
-        left: el.scrollWidth,
-        behavior: "instant",
-      });
+      const timer = setTimeout(() => {
+        el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
+      }, 300);
+      return () => clearTimeout(timer);
     }
-  }, [isLoading]);
+  }, [confirmedBlocks, upcomingBlock]);
+
+  const latestConfirmedBlock =
+    confirmedBlocks.length > 0
+      ? confirmedBlocks[confirmedBlocks.length - 1]
+      : null;
+
+  const confirmedCarouselBlocks: CarouselBlock[] = confirmedBlocks.map((b) => ({
+    height: b.height,
+    tx_count: b.tx_count,
+    isUpcoming: false,
+    isLatestConfirmed: latestConfirmedBlock?.height === b.height,
+    timestamp: b.timestamp,
+    totalFees: b.extras.totalFees,
+    blockSize: b.size,
+  }));
+
+  const upcomingCarouselBlock: CarouselBlock | null =
+    upcomingBlock && latestConfirmedBlock
+      ? {
+          height: latestConfirmedBlock.height + 1,
+          tx_count: upcomingBlock.nTx,
+          isUpcoming: true,
+          isLatestConfirmed: false,
+          totalFees: upcomingBlock.totalFees,
+          blockSize: upcomingBlock.blockSize,
+        }
+      : null;
 
   if (error) {
     return (
@@ -207,7 +202,11 @@ export const BlockCarousel = ({
     );
   }
 
-  if (isLoading && confirmedBlocks.length === 0) {
+  if (
+    isLoading &&
+    confirmedCarouselBlocks.length === 0 &&
+    !upcomingCarouselBlock
+  ) {
     return (
       <div className="w-full overflow-hidden text-white">
         <div className="text-center font-mono text-gray-400">
@@ -219,14 +218,10 @@ export const BlockCarousel = ({
 
   return (
     <div className="w-full overflow-hidden py-2 sm:py-4">
-      <div ref={constraintsRef} className="group relative">
+      <div className="group relative">
         <motion.div
           ref={carouselRef}
-          drag="x"
-          dragConstraints={constraintsRef}
-          dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
-          dragElastic={0.1}
-          className="flex cursor-grab items-center overflow-x-auto pb-4 pl-4 active:cursor-grabbing sm:pl-6"
+          className="flex cursor-grab snap-x snap-mandatory scroll-px-2 items-center overflow-x-auto px-2 pb-4 active:cursor-grabbing sm:scroll-px-6 sm:px-6"
           style={
             {
               scrollbarWidth: "none",
@@ -235,29 +230,44 @@ export const BlockCarousel = ({
           }
         >
           <AnimatePresence initial={false}>
-            {confirmedBlocks.map((block, index) => (
+            {confirmedCarouselBlocks.map((block) => (
               <motion.div
-                key={block.height}
+                key={`${block.height}-confirmed`}
                 layout
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+                className="snap-start"
               >
-                <BlockCard
-                  block={block}
-                  isLatest={index === confirmedBlocks.length - 1}
-                />
+                <BlockCard block={block} />
               </motion.div>
             ))}
+            {upcomingCarouselBlock && [
+              <div
+                key="separator"
+                className="flex h-32 flex-col items-center justify-center self-center px-4 sm:h-40"
+              >
+                <div className="h-1/3 border-l-2 border-dashed border-gray-500/70" />
+                <div className="my-1 text-2xl text-gray-400">⇄</div>
+                <div className="h-1/3 border-l-2 border-dashed border-gray-500/70" />
+              </div>,
+              <motion.div
+                key={`${upcomingCarouselBlock.height}-upcoming`}
+                layout
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+                className="snap-start"
+              >
+                <BlockCard block={upcomingCarouselBlock} />
+              </motion.div>,
+            ]}
           </AnimatePresence>
-
-          {upcomingBlocks.length > 0 && <Separator />}
-
-          {upcomingBlocks.map((block, index) => (
-            <UpcomingBlockCard key={index} block={block} index={index} />
-          ))}
         </motion.div>
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-black to-transparent opacity-50 transition-opacity group-hover:opacity-80" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-black to-transparent opacity-50 transition-opacity group-hover:opacity-80" />
       </div>
     </div>
   );
