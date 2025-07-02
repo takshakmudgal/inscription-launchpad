@@ -20,11 +20,11 @@ export default function PlaceholderPage() {
           backgroundColor: "var(--background)",
         }}
       >
-        <div className="container mx-auto flex h-16 items-center justify-center px-4 sm:h-20 sm:px-6 lg:px-8">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:h-20 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 sm:gap-3">
             <Image
               src="/bitmemes_logo.png"
-              alt="BitMemes Logo"
+              alt="Bitpill Logo"
               width={24}
               height={24}
               className="sm:h-8 sm:w-8"
@@ -34,9 +34,25 @@ export default function PlaceholderPage() {
               className="text-lg font-bold sm:text-xl"
               style={{ color: "var(--foreground)" }}
             >
-              BitMemes
+              Bitpill
             </span>
           </div>
+          <a
+            href="https://x.com/bitpilldotfun"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-lg font-bold sm:text-xl"
+            style={{ color: "var(--foreground)" }}
+          >
+            <Image
+              src="/x_white.png"
+              alt="X Logo"
+              width={24}
+              height={24}
+              className="sm:h-6 sm:w-6"
+              style={{ objectFit: "contain" }}
+            />
+          </a>
         </div>
       </header>
 
@@ -86,22 +102,10 @@ export default function PlaceholderPage() {
             </div>
           </div>
 
-          <p className="mt-12 max-w-3xl text-base text-gray-300 sm:mt-16 sm:text-lg">
+          {/* <p className="mt-12 max-w-3xl text-base text-gray-300 sm:mt-16 sm:text-lg">
             The ultimate battleground for memes. Propose, vote, and get your
             meme inscribed on Bitcoin and launched as a token on Solana.
-          </p>
-
-          <div className="mt-8">
-            <span
-              className="animate-pulse rounded-full px-6 py-3 text-xl font-bold sm:px-8 sm:py-4 sm:text-2xl"
-              style={{
-                color: "var(--primary)",
-                backgroundColor: "rgba(247, 147, 26, 0.1)",
-              }}
-            >
-              COMING SOON
-            </span>
-          </div>
+          </p> */}
         </section>
 
         <BlockCarousel onLatestBlock={() => {}} />
@@ -150,7 +154,7 @@ export default function PlaceholderPage() {
       <footer className="border-t" style={{ borderColor: "var(--border)" }}>
         <div className="container mx-auto flex items-center justify-between px-4 py-6 text-gray-400 sm:px-6 lg:px-8">
           <p className="text-sm">
-            &copy; {new Date().getFullYear()} BitMemes. All rights reserved.
+            &copy; {new Date().getFullYear()} Bitpill. All rights reserved.
           </p>
           <p className="text-sm">The future of memes is eternal.</p>
         </div>
