@@ -74,7 +74,7 @@ export default function PlaceholderPage() {
                 className="text-2xl font-bold sm:text-3xl"
                 style={{ color: "var(--primary)" }}
               >
-                Immortalize on Bitcoin
+                Inscribe on Bitcoin <span className="italic">Forever</span>
               </h2>
             </div>
 
