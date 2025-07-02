@@ -20,11 +20,11 @@ export default function PlaceholderPage() {
           backgroundColor: "var(--background)",
         }}
       >
-        <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:h-20 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 sm:gap-3">
+        <div className="container mx-auto flex h-16 items-center justify-between space-x-20 px-4 sm:h-20 sm:px-6 md:justify-center lg:px-8">
+          <div className="flex items-center">
             <Image
               src="/bitmemes_logo.png"
-              alt="Bitpill Logo"
+              alt="BitPill Logo"
               width={24}
               height={24}
               className="sm:h-8 sm:w-8"
@@ -34,7 +34,7 @@ export default function PlaceholderPage() {
               className="text-lg font-bold sm:text-xl"
               style={{ color: "var(--foreground)" }}
             >
-              Bitpill
+              BitPill
             </span>
           </div>
           <a
@@ -108,7 +108,9 @@ export default function PlaceholderPage() {
           </p> */}
         </section>
 
-        <BlockCarousel onLatestBlock={() => {}} />
+        <div className="container mx-auto">
+          <BlockCarousel onLatestBlock={() => {}} />
+        </div>
 
         {/* How It Works Section */}
         <section className="container mx-auto px-4 py-16 sm:py-24 lg:px-8">
@@ -142,7 +144,7 @@ export default function PlaceholderPage() {
               <HowItWorksStep
                 step="4"
                 title="Launch on Pump.fun"
-                description="Optionally, launch your winning meme as a new token on Solana."
+                description="Launch your winning meme as a new token on Solana."
                 isLeft={false}
               />
             </div>
@@ -154,7 +156,7 @@ export default function PlaceholderPage() {
       <footer className="border-t" style={{ borderColor: "var(--border)" }}>
         <div className="container mx-auto flex items-center justify-between px-4 py-6 text-gray-400 sm:px-6 lg:px-8">
           <p className="text-sm">
-            &copy; {new Date().getFullYear()} Bitpill. All rights reserved.
+            &copy; {new Date().getFullYear()} BitPill. All rights reserved.
           </p>
           <p className="text-sm">The future of memes is eternal.</p>
         </div>
