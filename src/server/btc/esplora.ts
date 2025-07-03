@@ -60,15 +60,6 @@ interface TokenResponse {
   scope: string;
 }
 
-interface UpcomingBlock {
-  feeRange: string;
-  totalFees: number;
-  txCount: number;
-  size: number;
-  avgFee: number;
-  avgFeeRate: number;
-}
-
 export class EsploraService {
   private readonly enterpriseApiUrl: string;
   private readonly tokenUrl =
@@ -121,7 +112,8 @@ export class EsploraService {
             return this.axiosInstance(originalRequest);
           }
         }
-        return Promise.reject(error);
+        // Reject with the original error, which includes response details
+        return Promise.reject(new Error(JSON.stringify(error)));
       },
     );
   }

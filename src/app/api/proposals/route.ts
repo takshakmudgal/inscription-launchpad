@@ -5,6 +5,7 @@ import { proposals, users, inscriptions } from "~/server/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { ApiResponse, Proposal } from "~/types";
+import { esploraService } from "~/server/btc/esplora";
 
 const proposalSchema = z.object({
   name: z.string().min(1).max(50),
@@ -28,7 +29,7 @@ export async function GET(
     const page = parseInt(searchParams.get("page") ?? "1");
     const limit = parseInt(searchParams.get("limit") ?? "20");
     const sortBy = searchParams.get("sortBy") ?? "totalVotes";
-    const order = searchParams.get("order") ?? "desc"; 
+    const order = searchParams.get("order") ?? "desc";
     const status = searchParams.get("status") ?? "active";
     const offset = (page - 1) * limit;
     const baseQuery = db
@@ -247,11 +248,14 @@ export async function POST(
           .insert(users)
           .values({
             walletAddress: validatedData.walletAddress,
+            username: validatedData.walletAddress.substring(0, 8),
           })
           .returning();
-        userId = newUser[0]!.id;
+        userId = newUser[0]?.id;
       }
     }
+
+    const currentBlockHeight = await esploraService.getCurrentBlockHeight();
 
     const newProposal = await db
       .insert(proposals)
@@ -259,16 +263,23 @@ export async function POST(
         name: validatedData.name,
         ticker: validatedData.ticker,
         description: validatedData.description,
-        website: validatedData.website ?? null,
-        twitter: validatedData.twitter ?? null,
-        telegram: validatedData.telegram ?? null,
+        website: validatedData.website,
+        twitter: validatedData.twitter,
+        telegram: validatedData.telegram,
         imageUrl: validatedData.imageUrl,
-        bannerUrl: validatedData.bannerUrl ?? null,
+        bannerUrl: validatedData.bannerUrl,
         submittedBy: userId,
+        creationBlock: currentBlockHeight,
       })
       .returning();
 
-    const created = newProposal[0]!;
+    const returnedProposal = newProposal[0];
+    if (!returnedProposal) {
+      return NextResponse.json(
+        { success: false, error: "Failed to create proposal" },
+        { status: 500 },
+      );
+    }
 
     let submitterDetails;
     if (userId) {
@@ -294,27 +305,27 @@ export async function POST(
     }
 
     const transformedProposal: Proposal = {
-      id: created.id,
-      name: created.name,
-      ticker: created.ticker,
-      description: created.description,
-      website: created.website ?? undefined,
-      twitter: created.twitter ?? undefined,
-      telegram: created.telegram ?? undefined,
-      imageUrl: created.imageUrl,
-      bannerUrl: created.bannerUrl ?? undefined,
-      submittedBy: created.submittedBy ?? undefined,
+      id: returnedProposal.id,
+      name: returnedProposal.name,
+      ticker: returnedProposal.ticker,
+      description: returnedProposal.description,
+      website: returnedProposal.website ?? undefined,
+      twitter: returnedProposal.twitter ?? undefined,
+      telegram: returnedProposal.telegram ?? undefined,
+      imageUrl: returnedProposal.imageUrl,
+      bannerUrl: returnedProposal.bannerUrl ?? undefined,
+      submittedBy: returnedProposal.submittedBy ?? undefined,
       submitter: submitterDetails,
-      votesUp: created.votesUp,
-      votesDown: created.votesDown,
-      totalVotes: created.totalVotes,
-      status: created.status,
-      firstTimeAsLeader: created.firstTimeAsLeader?.toISOString(),
-      leaderStartBlock: created.leaderStartBlock ?? undefined,
-      leaderboardMinBlocks: created.leaderboardMinBlocks,
-      expirationBlock: created.expirationBlock ?? undefined,
-      createdAt: created.createdAt.toISOString(),
-      updatedAt: created.updatedAt.toISOString(),
+      votesUp: returnedProposal.votesUp,
+      votesDown: returnedProposal.votesDown,
+      totalVotes: returnedProposal.totalVotes,
+      status: returnedProposal.status,
+      firstTimeAsLeader: returnedProposal.firstTimeAsLeader?.toISOString(),
+      leaderStartBlock: returnedProposal.leaderStartBlock ?? undefined,
+      leaderboardMinBlocks: returnedProposal.leaderboardMinBlocks,
+      expirationBlock: returnedProposal.expirationBlock ?? undefined,
+      createdAt: returnedProposal.createdAt.toISOString(),
+      updatedAt: returnedProposal.updatedAt.toISOString(),
     };
 
     return NextResponse.json({

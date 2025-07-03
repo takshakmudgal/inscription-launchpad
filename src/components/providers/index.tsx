@@ -1,7 +1,20 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import type { User } from "~/types";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
+import {
+  ConnectionProvider,
+  WalletProvider as SolanaWalletProvider,
+} from "@solana/wallet-adapter-react";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
+import { clusterApiUrl } from "@solana/web3.js";
 
 interface UserProfile {
   id: number;
@@ -47,7 +60,7 @@ interface WalletProviderProps {
   children: React.ReactNode;
 }
 
-export function WalletProvider({ children }: WalletProviderProps) {
+function AppWalletProvider({ children }: WalletProviderProps) {
   const [walletAddress, setWalletAddressState] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
@@ -58,35 +71,35 @@ export function WalletProvider({ children }: WalletProviderProps) {
     }
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    if (!walletAddress) return;
+    setIsLoadingProfile(true);
+    try {
+      const response = await fetch(
+        `/api/users/profile?walletAddress=${encodeURIComponent(walletAddress)}`,
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setUserProfile(data.data);
+        }
+      } else if (response.status !== 404) {
+        console.error("Error loading user profile:", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error loading user profile:", error);
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  }, [walletAddress]);
+
   useEffect(() => {
     if (walletAddress) {
       refreshProfile();
     } else {
       setUserProfile(null);
     }
-  }, [walletAddress]);
-
-  const refreshProfile = async () => {
-    // if (!walletAddress) return;
-    // setIsLoadingProfile(true);
-    // try {
-    //   const response = await fetch(
-    //     `/api/users/profile?walletAddress=${encodeURIComponent(walletAddress)}`,
-    //   );
-    //   if (response.ok) {
-    //     const data = await response.json();
-    //     if (data.success && data.data) {
-    //       setUserProfile(data.data);
-    //     }
-    //   } else if (response.status !== 404) {
-    //     console.error("Error loading user profile:", response.statusText);
-    //   }
-    // } catch (error) {
-    //   console.error("Error loading user profile:", error);
-    // } finally {
-    //   setIsLoadingProfile(false);
-    // }
-  };
+  }, [walletAddress, refreshProfile]);
 
   const updateProfile = async (profileData: {
     username: string;
@@ -154,6 +167,21 @@ export function WalletProvider({ children }: WalletProviderProps) {
     >
       {children}
     </WalletContext.Provider>
+  );
+}
+
+export function WalletProvider({ children }: WalletProviderProps) {
+  const network = "devnet";
+  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <SolanaWalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          <AppWalletProvider>{children}</AppWalletProvider>
+        </WalletModalProvider>
+      </SolanaWalletProvider>
+    </ConnectionProvider>
   );
 }
 

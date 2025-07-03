@@ -1,4 +1,5 @@
 import "~/styles/globals.css";
+import "@solana/wallet-adapter-react-ui/styles.css";
 
 import { Inter } from "next/font/google";
 
@@ -18,8 +19,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={inter.className}>
-      <body>
+    <html lang="en" className={`${inter.className} no-scrollbar-x`}>
+      <body className="no-scrollbar-x">
         <WalletProvider>{children}</WalletProvider>
       </body>
     </html>

@@ -44,7 +44,7 @@ export async function GET(
       status === "active"
         ? await baseQuery
             .where(
-              sql`${proposals.status} IN ('active', 'leader')`,
+              sql`${proposals.status} IN ('active', 'leader', 'inscribing')`,
             )
             .orderBy(desc(proposals.totalVotes))
             .limit(limit)

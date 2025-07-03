@@ -1,14 +1,15 @@
 import { inscriptionEngine } from "./jobs/inscription-engine";
 import { unisatMonitor } from "./jobs/unisat-monitor";
 
-console.log("🚀 Initializing BitMemes background services...");
-console.log("✅ Background services initialized:");
-console.log(
-  "   📝 Inscription Engine - monitors new blocks and inscribes winning proposals",
-);
-console.log(
-  "   🔍 UniSat Monitor - tracks UniSat order statuses and updates inscriptions",
-);
-console.log("   🔄 All services run automatically on their own schedules");
+declare global {
+  var servicesInitialized: boolean;
+}
+
+if (!global.servicesInitialized) {
+  console.log("🚀 Initializing BitPill background services...");
+  // The individual services will log their own initialization.
+  global.servicesInitialized = true;
+  console.log("✅ Background services initialized.");
+}
 
 export { inscriptionEngine, unisatMonitor };

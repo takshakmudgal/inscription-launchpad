@@ -48,7 +48,9 @@ class PumpFunService {
       formData.append("description", proposal.description);
       formData.append("twitter", proposal.twitter || "");
       formData.append("telegram", proposal.telegram || "");
-      formData.append("website", proposal.website || "");
+      // Use our website's proposal page as the website URL
+      const proposalUrl = `https://bitmemes.com/proposals/${proposal.id}`;
+      formData.append("website", proposalUrl);
       formData.append("showName", "true");
 
       console.log("Uploading metadata to pump.fun IPFS...");

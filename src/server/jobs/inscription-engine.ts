@@ -313,23 +313,24 @@ class InscriptionEngine {
 
   async expireOldProposals(currentBlockHeight: number) {
     try {
+      const fiveBlocksAgo = currentBlockHeight - 5;
       const expiredProposals = await db
         .select()
         .from(proposals)
         .where(
-          sql`${proposals.status} = 'leader' 
-              AND ${proposals.expirationBlock} IS NOT NULL 
-              AND ${proposals.expirationBlock} <= ${currentBlockHeight}`,
+          sql`${proposals.status} = 'active' AND ${
+            proposals.creationBlock
+          } IS NOT NULL AND ${proposals.creationBlock} <= ${fiveBlocksAgo}`,
         );
 
       if (expiredProposals.length > 0) {
         console.log(
-          `⏰ Found ${expiredProposals.length} proposals that hit their expiration deadline`,
+          `⏰ Found ${expiredProposals.length} active proposals that are older than 5 blocks`,
         );
 
         for (const proposal of expiredProposals) {
           console.log(
-            `⏰ TIME'S UP! ${proposal.ticker} failed to get inscribed before expiration block ${proposal.expirationBlock}`,
+            `⏰ TIME'S UP! ${proposal.ticker} has been active for more than 5 blocks without becoming a leader.`,
           );
 
           await db
@@ -341,7 +342,7 @@ class InscriptionEngine {
             .where(eq(proposals.id, proposal.id));
 
           console.log(
-            `❌ ${proposal.ticker} eliminated due to expiration - competition window closed`,
+            `❌ ${proposal.ticker} eliminated due to inactivity - competition window closed`,
           );
         }
       }
@@ -569,4 +570,16 @@ class InscriptionEngine {
   }
 }
 
-export const inscriptionEngine = new InscriptionEngine();
+declare global {
+  var inscriptionEngineInstance: InscriptionEngine;
+}
+
+function getInscriptionEngineInstance(): InscriptionEngine {
+  if (!global.inscriptionEngineInstance) {
+    console.log("🛠️ Creating new InscriptionEngine instance");
+    global.inscriptionEngineInstance = new InscriptionEngine();
+  }
+  return global.inscriptionEngineInstance;
+}
+
+export const inscriptionEngine = getInscriptionEngineInstance();

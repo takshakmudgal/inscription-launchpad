@@ -105,6 +105,7 @@ export interface BlockInfo {
     medianFee: number;
     feeRange: number[];
   };
+  inscription?: Inscription | null;
 }
 
 export interface UpcomingBlock {
@@ -147,6 +148,7 @@ export interface ProposalSubmission {
   telegram?: string;
   imageUrl: string;
   bannerUrl?: string;
+  walletAddress?: string;
 }
 
 export interface VoteSubmission {

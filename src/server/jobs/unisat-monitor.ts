@@ -377,4 +377,16 @@ class UnisatMonitor {
   }
 }
 
-export const unisatMonitor = new UnisatMonitor();
+declare global {
+  var unisatMonitorInstance: UnisatMonitor;
+}
+
+function getUnisatMonitorInstance(): UnisatMonitor {
+  if (!global.unisatMonitorInstance) {
+    console.log("🛠️ Creating new UnisatMonitor instance");
+    global.unisatMonitorInstance = new UnisatMonitor();
+  }
+  return global.unisatMonitorInstance;
+}
+
+export const unisatMonitor = getUnisatMonitorInstance();

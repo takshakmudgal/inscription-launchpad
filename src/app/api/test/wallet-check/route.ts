@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { bitcoinWallet } from "~/server/services/bitcoin-wallet";
 import { env } from "~/env";
 
