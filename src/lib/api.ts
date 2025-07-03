@@ -24,11 +24,17 @@ async function apiRequest<T>(
     ...options,
   });
 
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.statusText}`);
+  if (response.ok) {
+    return response.json() as Promise<ApiResponse<T>>;
   }
 
-  return response.json() as Promise<ApiResponse<T>>;
+  const errorData = await response.json().catch(() => null);
+  const message =
+    errorData?.message ||
+    errorData?.error ||
+    response.statusText ||
+    `HTTP error ${response.status}`;
+  throw new Error(message);
 }
 
 export async function getProposals(
@@ -93,42 +99,4 @@ export async function getLeaderboard(
 
 export async function getLatestBlock(): Promise<ApiResponse<BlockInfo>> {
   return apiRequest("/blocks/latest");
-}
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status?: number,
-    public code?: string,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
-
-export async function handleApiResponse<T>(
-  apiCall: () => Promise<ApiResponse<T>>,
-): Promise<T> {
-  try {
-    const response = await apiCall();
-
-    if (!response.success) {
-      throw new ApiError(
-        response.error ?? "Unknown API error",
-        500,
-        "API_ERROR",
-      );
-    }
-
-    return response.data!;
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-
-    throw new ApiError(
-      error instanceof Error ? error.message : "Network error",
-      0,
-      "NETWORK_ERROR",
-    );
-  }
 }

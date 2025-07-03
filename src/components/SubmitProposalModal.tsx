@@ -3,7 +3,23 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { z } from "zod";
 import type { ProposalSubmission } from "~/types";
+
+const proposalSchema = z.object({
+  name: z.string().min(1, "Meme name is required."),
+  ticker: z
+    .string()
+    .min(1, "Ticker is required.")
+    .max(10, "Ticker must be 10 characters or less."),
+  description: z.string().min(1, "Description is required."),
+  twitter: z.string().url("Invalid Twitter URL.").optional().or(z.literal("")),
+  telegram: z
+    .string()
+    .url("Invalid Telegram URL.")
+    .optional()
+    .or(z.literal("")),
+});
 
 interface SubmitProposalModalProps {
   isOpen: boolean;
@@ -115,12 +131,33 @@ export function SubmitProposalModal({
         bannerUrl = await uploadFile(bannerFile);
       }
 
-      const proposal = {
+      const submissionData = {
         ...formData,
-        ticker: formData.ticker.toUpperCase().replace(/[^A-Z0-9]/g, ""),
         imageUrl,
         bannerUrl,
       };
+
+      const result = proposalSchema.safeParse(submissionData);
+      if (!result.success) {
+        const errorMessage = result.error.errors[0]?.message;
+        toast.error(errorMessage || "Invalid data.");
+        return;
+      }
+
+      const proposal: ProposalSubmission = {
+        name: result.data.name,
+        ticker: result.data.ticker.toUpperCase().replace(/[^A-Z0-9]/g, ""),
+        description: result.data.description,
+        imageUrl,
+        bannerUrl,
+      };
+
+      if (result.data.twitter) {
+        proposal.twitter = result.data.twitter;
+      }
+      if (result.data.telegram) {
+        proposal.telegram = result.data.telegram;
+      }
 
       await onSubmit(proposal);
       resetForm();
@@ -253,7 +290,7 @@ export function SubmitProposalModal({
                   onChange={(e) =>
                     setFormData({ ...formData, twitter: e.target.value })
                   }
-                  placeholder="@username"
+                  placeholder="https://x.com/username"
                   className="extra-mobile-padding extra-mobile-text w-full rounded-xl border border-orange-500/20 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder-white/40 transition-all focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 focus:outline-none sm:px-3 sm:py-2 lg:px-4 lg:py-3 lg:text-base"
                 />
               </div>
@@ -268,7 +305,7 @@ export function SubmitProposalModal({
                   onChange={(e) =>
                     setFormData({ ...formData, telegram: e.target.value })
                   }
-                  placeholder="https://t.me/yourgroup"
+                  placeholder="https://t.me/username"
                   className="extra-mobile-padding extra-mobile-text w-full rounded-xl border border-orange-500/20 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder-white/40 transition-all focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 focus:outline-none sm:px-3 sm:py-2 lg:px-4 lg:py-3 lg:text-base"
                 />
               </div>

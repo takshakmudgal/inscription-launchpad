@@ -181,7 +181,6 @@ export default function HomePage() {
       },
       error: (err: any) => err.message || "An error occurred.",
     });
-    await promise;
   };
 
   return (
