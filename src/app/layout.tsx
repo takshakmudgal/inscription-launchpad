@@ -1,4 +1,5 @@
 import "~/styles/globals.css";
+import "@solana/wallet-adapter-react-ui/styles.css";
 
 import { Inter } from "next/font/google";
 
@@ -8,7 +9,7 @@ import { WalletProvider } from "~/components/providers";
 import "~/server/init";
 
 export const metadata: Metadata = {
-  title: "BitMemes - Bitcoin Meme Launchpad",
+  title: "BitPill - Bitcoin Meme Launchpad",
   description:
     "The first Bitcoin meme coin launchpad. Vote for your favorites and watch them get permanently inscribed on the Bitcoin blockchain.",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
@@ -18,8 +19,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={inter.className}>
-      <body>
+    <html lang="en" className={`${inter.className} no-scrollbar-x`}>
+      <body className="no-scrollbar-x">
         <WalletProvider>{children}</WalletProvider>
       </body>
     </html>

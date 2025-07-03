@@ -1,26 +1,14 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
+import type { ProposalSubmission } from "~/types";
 
 interface SubmitProposalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (proposal: {
-    name: string;
-    ticker: string;
-    description: string;
-    imageUrl: string;
-    creator: string;
-  }) => void;
-}
-
-interface FormErrors {
-  name?: string;
-  ticker?: string;
-  description?: string;
-  imageUrl?: string;
-  submit?: string;
+  onSubmit: (proposal: ProposalSubmission) => void;
 }
 
 export function SubmitProposalModal({
@@ -32,133 +20,115 @@ export function SubmitProposalModal({
     name: "",
     ticker: "",
     description: "",
-    imageUrl: "",
-    creator: "",
+    twitter: "",
+    telegram: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-    const finalValue = name === "ticker" ? value.toUpperCase() : value;
-    setFormData((prev) => ({ ...prev, [name]: finalValue }));
-    if (errors[name as keyof FormErrors]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-    if (!formData.name.trim()) {
-      newErrors.name = "Meme name is required";
-    } else if (formData.name.length < 2) {
-      newErrors.name = "Name must be at least 2 characters";
-    } else if (formData.name.length > 50) {
-      newErrors.name = "Name must be less than 50 characters";
-    }
-
-    if (!formData.ticker.trim()) {
-      newErrors.ticker = "Ticker is required";
-    } else if (formData.ticker.length < 2) {
-      newErrors.ticker = "Ticker must be at least 2 characters";
-    } else if (formData.ticker.length > 10) {
-      newErrors.ticker = "Ticker must be 10 characters or less";
-    } else if (!/^[A-Z0-9]+$/.test(formData.ticker)) {
-      newErrors.ticker = "Ticker can only contain letters and numbers";
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = "Description is required";
-    } else if (formData.description.length < 10) {
-      newErrors.description = "Description must be at least 10 characters";
-    } else if (formData.description.length > 280) {
-      newErrors.description = "Description must be less than 280 characters";
-    }
-
-    if (!formData.imageUrl && !imageFile) {
-      newErrors.imageUrl = "Meme image is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setErrors((prev) => ({
-        ...prev,
-        imageUrl: "Please select a valid image file",
-      }));
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setErrors((prev) => ({
-        ...prev,
-        imageUrl: "Image file size must be less than 5MB",
-      }));
-      return;
-    }
-
-    setImageFile(file);
-    setErrors((prev) => ({ ...prev, imageUrl: undefined }));
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result && typeof e.target.result === "string") {
-        setImagePreview(e.target.result);
-        setFormData((prev) => ({
-          ...prev,
-          imageUrl: e.target?.result as string,
-        }));
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const removeImage = () => {
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      ticker: "",
+      description: "",
+      twitter: "",
+      telegram: "",
+    });
     setImageFile(null);
+    setBannerFile(null);
     setImagePreview(null);
-    setFormData((prev) => ({ ...prev, imageUrl: "" }));
-    setErrors((prev) => ({ ...prev, imageUrl: undefined }));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    setBannerPreview(null);
+    setIsSubmitting(false);
+  };
+
+  const handleClose = () => {
+    if (isSubmitting) return;
+    resetForm();
+    onClose();
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image must be less than 5MB");
+        return;
+      }
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Banner must be less than 5MB");
+        return;
+      }
+      setBannerFile(file);
+      const reader = new FileReader();
+      reader.onload = () => setBannerPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || "Upload failed");
+    }
+
+    return result.url;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
 
-    if (!validateForm()) {
+    if (!imageFile) {
+      toast.error("Please select an image");
       return;
     }
 
     setIsSubmitting(true);
-    setErrors({});
 
     try {
-      await onSubmit(formData);
-      setFormData({
-        name: "",
-        ticker: "",
-        description: "",
-        imageUrl: "",
-        creator: "",
-      });
-      removeImage();
-      onClose();
+      // Upload image file
+      const imageUrl = await uploadFile(imageFile);
+
+      // Upload banner file if provided
+      let bannerUrl: string | undefined;
+      if (bannerFile) {
+        bannerUrl = await uploadFile(bannerFile);
+      }
+
+      const proposal = {
+        ...formData,
+        ticker: formData.ticker.toUpperCase().replace(/[^A-Z0-9]/g, ""),
+        imageUrl,
+        bannerUrl,
+      };
+
+      await onSubmit(proposal);
+      resetForm();
     } catch (error) {
-      console.error("Error submitting proposal:", error);
-      setErrors({ submit: "Failed to submit proposal. Please try again." });
+      console.error("Failed to submit proposal:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to submit proposal",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -168,255 +138,238 @@ export function SubmitProposalModal({
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            onClose();
-          }
-        }}
-      >
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6">
+        {/* Backdrop */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={handleClose}
+          className="absolute inset-0 bg-black/80 backdrop-blur-md"
+        />
+
+        {/* Modal */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          transition={{ duration: 0.2 }}
-          className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-3xl border border-white/20 bg-gradient-to-br from-gray-900/95 to-black/95 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl"
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="relative max-h-[95vh] w-full max-w-md overflow-y-auto rounded-2xl border border-orange-500/20 bg-gradient-to-br from-gray-900/95 to-gray-800/95 shadow-2xl backdrop-blur-xl sm:max-w-lg"
         >
-          <div className="sticky top-0 z-10 border-b border-white/20 bg-gradient-to-r from-white/10 to-gray-800/20 p-6 backdrop-blur-xl">
+          {/* Header */}
+          <div className="extra-mobile-padding sticky top-0 border-b border-orange-500/20 bg-gray-900/90 p-3 backdrop-blur-xl sm:p-4 lg:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-white">
-                  🚀 Submit Meme Proposal
-                </h2>
-                <p className="mt-1 text-gray-400">
-                  Create your meme coin to compete for Bitcoin inscription
-                </p>
-              </div>
+              <h2 className="extra-mobile-title bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 bg-clip-text text-lg font-bold text-transparent sm:text-xl lg:text-2xl">
+                Submit Proposal
+              </h2>
               <button
-                onClick={onClose}
-                className="rounded-full bg-white/10 p-2 text-white/70 transition-all hover:bg-white/20 hover:text-white"
+                onClick={handleClose}
+                disabled={isSubmitting}
+                className="rounded-lg p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50 sm:p-2"
               >
                 <svg
-                  width="24"
-                  height="24"
+                  className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6"
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
-                  fill="currentColor"
                 >
-                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6 p-6">
-            <div className="grid gap-4 md:grid-cols-2">
+          {/* Form */}
+          <form
+            onSubmit={handleSubmit}
+            className="extra-mobile-padding space-y-3 p-3 sm:space-y-4 sm:p-4 lg:space-y-6 lg:p-6"
+          >
+            {/* Basic Info */}
+            <div className="space-y-2.5 sm:space-y-3 lg:space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Meme Name <span className="text-red-400">*</span>
+                <label className="extra-mobile-text mb-1.5 block text-sm font-medium text-white sm:mb-2">
+                  Meme Name *
                 </label>
                 <input
                   type="text"
-                  name="name"
                   value={formData.name}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Doge Rocket"
-                  maxLength={50}
-                  className={`w-full rounded-xl border bg-white/5 px-4 py-3 text-white placeholder-gray-500 ring-1 transition-all focus:outline-none ${
-                    errors.name
-                      ? "border-red-500/50 ring-red-500/20 focus:border-red-500 focus:ring-red-500/30"
-                      : "border-white/20 ring-white/10 focus:border-white/30 focus:ring-white/20"
-                  }`}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  placeholder="Enter your meme's name"
+                  className="extra-mobile-padding extra-mobile-text w-full rounded-xl border border-orange-500/20 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder-white/40 transition-all focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 focus:outline-none sm:px-3 sm:py-2 lg:px-4 lg:py-3 lg:text-base"
                   required
                 />
-                {errors.name && (
-                  <p className="mt-1 text-sm text-red-400">{errors.name}</p>
-                )}
-                <div className="mt-1 text-xs text-gray-500">
-                  {formData.name.length}/50 characters
-                </div>
               </div>
+
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-300">
-                  Ticker <span className="text-red-400">*</span>
+                <label className="extra-mobile-text mb-1.5 block text-sm font-medium text-white sm:mb-2">
+                  Ticker Symbol *
                 </label>
                 <input
                   type="text"
-                  name="ticker"
                   value={formData.ticker}
-                  onChange={handleInputChange}
-                  placeholder="e.g., DGRKT"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      ticker: e.target.value.toUpperCase(),
+                    })
+                  }
+                  placeholder="e.g. DOGE"
                   maxLength={10}
-                  className={`w-full rounded-xl border bg-white/5 px-4 py-3 font-mono text-white uppercase placeholder-gray-500 ring-1 transition-all focus:outline-none ${
-                    errors.ticker
-                      ? "border-red-500/50 ring-red-500/20 focus:border-red-500 focus:ring-red-500/30"
-                      : "border-white/20 ring-white/10 focus:border-white/30 focus:ring-white/20"
-                  }`}
+                  className="extra-mobile-padding extra-mobile-text w-full rounded-xl border border-orange-500/20 bg-white/5 px-2.5 py-1.5 text-sm text-white uppercase placeholder-white/40 transition-all focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 focus:outline-none sm:px-3 sm:py-2 lg:px-4 lg:py-3 lg:text-base"
                   required
                 />
-                {errors.ticker && (
-                  <p className="mt-1 text-sm text-red-400">{errors.ticker}</p>
-                )}
-                <div className="mt-1 text-xs text-gray-500">
-                  {formData.ticker.length}/10 characters
-                </div>
               </div>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-300">
-                Description <span className="text-red-400">*</span>
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="Describe your meme coin... What makes it special? Why should the community vote for it?"
-                rows={4}
-                maxLength={280}
-                className={`w-full resize-none rounded-xl border bg-white/5 px-4 py-3 text-white placeholder-gray-500 ring-1 transition-all focus:outline-none ${
-                  errors.description
-                    ? "border-red-500/50 ring-red-500/20 focus:border-red-500 focus:ring-red-500/30"
-                    : "border-white/20 ring-white/10 focus:border-white/30 focus:ring-white/20"
-                }`}
-                required
-              />
-              {errors.description && (
-                <p className="mt-1 text-sm text-red-400">
-                  {errors.description}
-                </p>
-              )}
-              <div className="mt-1 text-xs text-gray-500">
-                {formData.description.length}/280 characters
-              </div>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-300">
-                Meme Image <span className="text-red-400">*</span>
-              </label>
 
-              {!imagePreview ? (
+              <div>
+                <label className="extra-mobile-text mb-1.5 block text-sm font-medium text-white sm:mb-2">
+                  Description *
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  placeholder="Describe your meme..."
+                  rows={2}
+                  className="extra-mobile-padding extra-mobile-text sm:rows-3 w-full rounded-xl border border-orange-500/20 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder-white/40 transition-all focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 focus:outline-none sm:px-3 sm:py-2 lg:px-4 lg:py-3 lg:text-base"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="extra-mobile-text mb-1.5 block text-sm font-medium text-white sm:mb-2">
+                  Twitter Handle (optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.twitter}
+                  onChange={(e) =>
+                    setFormData({ ...formData, twitter: e.target.value })
+                  }
+                  placeholder="@username"
+                  className="extra-mobile-padding extra-mobile-text w-full rounded-xl border border-orange-500/20 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder-white/40 transition-all focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 focus:outline-none sm:px-3 sm:py-2 lg:px-4 lg:py-3 lg:text-base"
+                />
+              </div>
+
+              <div>
+                <label className="extra-mobile-text mb-1.5 block text-sm font-medium text-white sm:mb-2">
+                  Telegram Link (optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.telegram}
+                  onChange={(e) =>
+                    setFormData({ ...formData, telegram: e.target.value })
+                  }
+                  placeholder="https://t.me/yourgroup"
+                  className="extra-mobile-padding extra-mobile-text w-full rounded-xl border border-orange-500/20 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder-white/40 transition-all focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 focus:outline-none sm:px-3 sm:py-2 lg:px-4 lg:py-3 lg:text-base"
+                />
+              </div>
+            </div>
+
+            {/* Image Upload */}
+            <div className="space-y-2.5 sm:space-y-3 lg:space-y-4">
+              <div>
+                <label className="extra-mobile-text mb-1.5 block text-sm font-medium text-white sm:mb-2">
+                  Meme Image * (Max 5MB)
+                </label>
                 <div className="relative">
                   <input
-                    ref={fileInputRef}
                     type="file"
                     accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
+                    onChange={handleImageChange}
+                    className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                    required={!imageFile}
                   />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`w-full rounded-xl border-2 border-dashed bg-white/5 px-6 py-8 text-center transition-all ${
-                      errors.imageUrl
-                        ? "border-red-500/50 hover:border-red-500/70"
-                        : "border-white/20 hover:border-white/30 hover:bg-white/10"
-                    }`}
-                  >
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="rounded-full bg-white/10 p-3">
-                        <svg
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          className="text-gray-400"
-                        >
-                          <rect
-                            width="18"
-                            height="18"
-                            x="3"
-                            y="3"
-                            rx="2"
-                            ry="2"
-                          />
-                          <circle cx="9" cy="9" r="2" />
-                          <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="font-medium text-white">
+                  <div className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-orange-500/50 bg-white/5 transition-colors hover:border-orange-500/70 hover:bg-white/8 sm:h-32 lg:h-40">
+                    {imagePreview ? (
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="h-full w-full rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="text-center">
+                        <div className="text-xl text-orange-400 sm:text-2xl lg:text-3xl">
+                          📸
+                        </div>
+                        <p className="extra-mobile-text mt-1 text-xs text-white/60 sm:text-sm">
                           Click to upload image
                         </p>
-                        <p className="text-sm text-gray-400">
-                          PNG, JPG, GIF up to 5MB
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="extra-mobile-text mb-1.5 block text-sm font-medium text-white sm:mb-2">
+                  Banner Image (optional, Max 5MB)
+                </label>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBannerChange}
+                    className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                  />
+                  <div className="flex h-20 items-center justify-center rounded-xl border-2 border-dashed border-orange-500/50 bg-white/5 transition-colors hover:border-orange-500/70 hover:bg-white/8 sm:h-24 lg:h-32">
+                    {bannerPreview ? (
+                      <img
+                        src={bannerPreview}
+                        alt="Banner Preview"
+                        className="h-full w-full rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="text-center">
+                        <div className="text-lg text-orange-400 sm:text-xl lg:text-2xl">
+                          🖼️
+                        </div>
+                        <p className="extra-mobile-text mt-1 text-xs text-white/60 sm:text-sm">
+                          Click to upload banner
                         </p>
                       </div>
-                    </div>
-                  </button>
-                  {errors.imageUrl && (
-                    <p className="mt-2 text-sm text-red-400">
-                      {errors.imageUrl}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="relative">
-                  <div className="overflow-hidden rounded-xl border border-white/20">
-                    <img
-                      src={imagePreview}
-                      alt="Meme preview"
-                      className="h-48 w-full object-cover"
-                    />
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={removeImage}
-                    className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white shadow-lg transition-all hover:bg-red-600"
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                    </svg>
-                  </button>
-                  <p className="mt-2 text-sm text-gray-400">
-                    Upload a meme image for your proposal. This will be
-                    displayed to voters.
-                  </p>
                 </div>
-              )}
+              </div>
             </div>
 
-            {errors.submit && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
-                <p className="text-sm text-red-400">{errors.submit}</p>
-              </div>
-            )}
-
-            <div className="flex gap-4 pt-4">
+            {/* Submit Button */}
+            <div className="flex gap-2 pt-1 sm:gap-3 sm:pt-2 lg:gap-4">
               <button
                 type="button"
-                onClick={onClose}
-                className="flex-1 rounded-xl border border-white/20 bg-white/5 px-6 py-3 font-semibold text-gray-300 transition-all hover:bg-white/10 hover:text-white"
+                onClick={handleClose}
+                disabled={isSubmitting}
+                className="ultra-mobile-button flex-1 rounded-xl border border-orange-500/20 bg-white/5 py-2 text-sm font-medium text-white transition-all hover:border-orange-500/30 hover:bg-white/8 disabled:opacity-50 sm:py-2.5 lg:py-3 lg:text-base"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 font-semibold text-white transition-all hover:from-purple-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="ultra-mobile-button flex-1 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 py-2 text-sm font-medium text-white transition-all hover:from-orange-400 hover:to-orange-500 disabled:opacity-50 sm:py-2.5 lg:py-3 lg:text-base"
               >
                 {isSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Submitting...
+                  <div className="flex items-center justify-center gap-1.5">
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border border-white/30 border-t-white sm:h-4 sm:w-4" />
+                    <span>Submitting...</span>
                   </div>
                 ) : (
-                  "🚀 Submit Proposal"
+                  "Submit Proposal"
                 )}
               </button>
             </div>
           </form>
         </motion.div>
-      </motion.div>
+      </div>
     </AnimatePresence>
   );
 }

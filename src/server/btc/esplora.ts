@@ -3,9 +3,30 @@ import { env } from "~/env";
 import type { BlockInfo, BitcoinTransaction } from "~/types";
 
 interface EsploraBlock {
-  height: number;
   id: string;
+  height: number;
+  version: number;
   timestamp: number;
+  tx_count: number;
+  size: number;
+  weight: number;
+  merkle_root: string;
+  previousblockhash: string;
+  mediantime: number;
+  nonce: number;
+  bits: number;
+  difficulty: number;
+  extras?: {
+    total_fees: number;
+    median_fee: number;
+    fee_range: [number, number];
+    reward: number;
+    pool: {
+      id: number;
+      name: string;
+      slug: string;
+    };
+  };
 }
 
 interface EsploraTransaction {
@@ -91,7 +112,8 @@ export class EsploraService {
             return this.axiosInstance(originalRequest);
           }
         }
-        return Promise.reject(error);
+        // Reject with the original error, which includes response details
+        return Promise.reject(new Error(JSON.stringify(error)));
       },
     );
   }
@@ -153,9 +175,24 @@ export class EsploraService {
       const block = blockResponse.data;
 
       return {
+        id: block.id,
         height: block.height,
-        hash: block.id,
+        version: block.version,
         timestamp: block.timestamp,
+        tx_count: block.tx_count,
+        size: block.size,
+        weight: block.weight,
+        merkle_root: block.merkle_root,
+        previousblockhash: block.previousblockhash,
+        mediantime: block.mediantime,
+        nonce: block.nonce,
+        bits: block.bits,
+        difficulty: block.difficulty,
+        extras: {
+          totalFees: block.extras?.total_fees ?? 0,
+          medianFee: block.extras?.median_fee ?? 0,
+          feeRange: block.extras?.fee_range ?? [0, 0],
+        },
       };
     } catch (error) {
       console.error(`Error fetching block at height ${height}:`, error);
@@ -171,9 +208,24 @@ export class EsploraService {
       const block = response.data;
 
       return {
+        id: block.id,
         height: block.height,
-        hash: block.id,
+        version: block.version,
         timestamp: block.timestamp,
+        tx_count: block.tx_count,
+        size: block.size,
+        weight: block.weight,
+        merkle_root: block.merkle_root,
+        previousblockhash: block.previousblockhash,
+        mediantime: block.mediantime,
+        nonce: block.nonce,
+        bits: block.bits,
+        difficulty: block.difficulty,
+        extras: {
+          totalFees: block.extras?.total_fees ?? 0,
+          medianFee: block.extras?.median_fee ?? 0,
+          feeRange: block.extras?.fee_range ?? [0, 0],
+        },
       };
     } catch (error) {
       console.error(`Error fetching block with hash ${hash}:`, error);
@@ -183,8 +235,30 @@ export class EsploraService {
 
   async getLatestBlock(): Promise<BlockInfo> {
     try {
-      const height = await this.getCurrentBlockHeight();
-      return await this.getBlockByHeight(height);
+      const response =
+        await this.axiosInstance.get<EsploraBlock>("/blocks/tip");
+      const block = response.data;
+
+      return {
+        id: block.id,
+        height: block.height,
+        version: block.version,
+        timestamp: block.timestamp,
+        tx_count: block.tx_count,
+        size: block.size,
+        weight: block.weight,
+        merkle_root: block.merkle_root,
+        previousblockhash: block.previousblockhash,
+        mediantime: block.mediantime,
+        nonce: block.nonce,
+        bits: block.bits,
+        difficulty: block.difficulty,
+        extras: {
+          totalFees: block.extras?.total_fees ?? 0,
+          medianFee: block.extras?.median_fee ?? 0,
+          feeRange: block.extras?.fee_range ?? [0, 0],
+        },
+      };
     } catch (error) {
       console.error("Error fetching latest block:", error);
       throw new Error("Failed to fetch latest block");

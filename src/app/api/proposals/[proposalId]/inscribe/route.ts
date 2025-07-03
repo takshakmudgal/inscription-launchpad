@@ -5,6 +5,14 @@ import { proposals } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import type { ApiResponse } from "~/types";
 
+/**
+ * WARNING: This endpoint directly marks a proposal as "inscribed" without validation.
+ * It should ONLY be used when an inscription has been CONFIRMED on the Bitcoin blockchain.
+ * Using this endpoint prematurely will cause proposals to appear in the "Launched Champions"
+ * section before they are actually inscribed, leading to inconsistent platform behavior.
+ *
+ * Consider adding authentication and proper validation before production use.
+ */
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ proposalId: string }> },

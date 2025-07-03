@@ -82,7 +82,7 @@ class InscriptionEngine {
 
   async processBlock(blockHeight: number) {
     const block = await esploraService.getBlockByHeight(blockHeight);
-    console.log(`📋 Block ${blockHeight} hash: ${block.hash}`);
+    console.log(`📋 Block ${blockHeight} hash: ${block.id}`);
 
     await this.expireOldProposals(blockHeight);
     const topProposal = await db
@@ -219,7 +219,7 @@ class InscriptionEngine {
       await db.insert(inscriptions).values({
         proposalId: currentWinner.id,
         blockHeight,
-        blockHash: block.hash,
+        blockHash: block.id,
         txid: inscriptionResult.txid || "pending",
         inscriptionId: inscriptionResult.inscriptionId,
         feeRate: env.INSCRIPTION_FEE_RATE
@@ -313,23 +313,24 @@ class InscriptionEngine {
 
   async expireOldProposals(currentBlockHeight: number) {
     try {
+      const fiveBlocksAgo = currentBlockHeight - 5;
       const expiredProposals = await db
         .select()
         .from(proposals)
         .where(
-          sql`${proposals.status} = 'leader' 
-              AND ${proposals.expirationBlock} IS NOT NULL 
-              AND ${proposals.expirationBlock} <= ${currentBlockHeight}`,
+          sql`${proposals.status} = 'active' AND ${
+            proposals.creationBlock
+          } IS NOT NULL AND ${proposals.creationBlock} <= ${fiveBlocksAgo}`,
         );
 
       if (expiredProposals.length > 0) {
         console.log(
-          `⏰ Found ${expiredProposals.length} proposals that hit their expiration deadline`,
+          `⏰ Found ${expiredProposals.length} active proposals that are older than 5 blocks`,
         );
 
         for (const proposal of expiredProposals) {
           console.log(
-            `⏰ TIME'S UP! ${proposal.ticker} failed to get inscribed before expiration block ${proposal.expirationBlock}`,
+            `⏰ TIME'S UP! ${proposal.ticker} has been active for more than 5 blocks without becoming a leader.`,
           );
 
           await db
@@ -341,7 +342,7 @@ class InscriptionEngine {
             .where(eq(proposals.id, proposal.id));
 
           console.log(
-            `❌ ${proposal.ticker} eliminated due to expiration - competition window closed`,
+            `❌ ${proposal.ticker} eliminated due to inactivity - competition window closed`,
           );
         }
       }
@@ -358,7 +359,7 @@ class InscriptionEngine {
       return 0;
     }
 
-    return Math.max(0, currentBlockHeight - proposal.leaderStartBlock);
+    return Math.max(0, currentBlockHeight - proposal.leaderStartBlock + 1);
   }
 
   async updateBlockTracker(blockHeight: number) {
@@ -372,14 +373,14 @@ class InscriptionEngine {
           .update(blockTracker)
           .set({
             lastProcessedBlock: blockHeight,
-            lastProcessedHash: block.hash,
+            lastProcessedHash: block.id,
             lastChecked: new Date(),
           })
           .where(eq(blockTracker.id, existing[0]!.id));
       } else {
         await db.insert(blockTracker).values({
           lastProcessedBlock: blockHeight,
-          lastProcessedHash: block.hash,
+          lastProcessedHash: block.id,
           lastChecked: new Date(),
         });
       }
@@ -486,7 +487,8 @@ class InscriptionEngine {
                 ? Math.max(
                     0,
                     (await esploraService.getCurrentBlockHeight()) -
-                      activeProposals[0].leaderStartBlock,
+                      activeProposals[0].leaderStartBlock +
+                      1,
                   )
                 : 0,
             }
@@ -569,4 +571,16 @@ class InscriptionEngine {
   }
 }
 
-export const inscriptionEngine = new InscriptionEngine();
+declare global {
+  var inscriptionEngineInstance: InscriptionEngine;
+}
+
+function getInscriptionEngineInstance(): InscriptionEngine {
+  if (!global.inscriptionEngineInstance) {
+    console.log("🛠️ Creating new InscriptionEngine instance");
+    global.inscriptionEngineInstance = new InscriptionEngine();
+  }
+  return global.inscriptionEngineInstance;
+}
+
+export const inscriptionEngine = getInscriptionEngineInstance();

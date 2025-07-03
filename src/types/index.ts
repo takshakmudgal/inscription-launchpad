@@ -100,11 +100,21 @@ export interface BlockInfo {
   nonce: number;
   bits: number;
   difficulty: number;
-  extras?: {
+  extras: {
     totalFees: number;
     medianFee: number;
     feeRange: number[];
   };
+  inscription?: Inscription | null;
+}
+
+export interface UpcomingBlock {
+  blockSize: number;
+  blockVSize: number;
+  nTx: number;
+  totalFees: number;
+  medianFee: number;
+  feeRange: number[];
 }
 
 export interface InscriptionPayload {
@@ -147,6 +157,7 @@ export interface ProposalSubmission {
   telegram?: string;
   imageUrl: string;
   bannerUrl?: string;
+  walletAddress?: string;
 }
 
 export interface VoteSubmission {

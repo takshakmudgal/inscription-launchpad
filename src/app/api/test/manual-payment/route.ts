@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { bitcoinWallet } from "~/server/services/bitcoin-wallet";
-import { unisatService } from "~/server/services/unisat";
 import { db } from "~/server/db";
 import { inscriptions, proposals } from "~/server/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -85,7 +84,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const balance = await bitcoinWallet.getBalance();
     const address = await bitcoinWallet.getAddress();

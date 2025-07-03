@@ -74,6 +74,7 @@ export const proposals = createTable(
       .default(2)
       .notNull(),
     expirationBlock: integer("expiration_block"),
+    creationBlock: integer("creation_block"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),

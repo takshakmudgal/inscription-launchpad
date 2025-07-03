@@ -1,8 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { unisatService } from "~/server/services/unisat";
 import { db } from "~/server/db";
-import { proposals, inscriptions } from "~/server/db/schema";
+import { proposals } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import type { ApiResponse } from "~/types";
 
@@ -25,7 +24,7 @@ export async function POST(
 ): Promise<NextResponse<ApiResponse<CreateOrderResponse>>> {
   try {
     const body = (await request.json()) as CreateOrderRequest;
-    const { proposalId, receiveAddress, blockHeight } = body;
+    const { proposalId, receiveAddress } = body;
 
     if (!proposalId || !receiveAddress) {
       return NextResponse.json(

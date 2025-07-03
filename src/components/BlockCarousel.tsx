@@ -3,7 +3,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
-import type { ApiResponse, BlockInfo, UpcomingBlock } from "~/types";
+import type {
+  ApiResponse,
+  BlockInfo,
+  UpcomingBlock,
+  Inscription,
+} from "~/types";
+import { SparklesIcon } from "@heroicons/react/24/outline";
 
 interface RecentBlocksResponse {
   blocks: BlockInfo[];
@@ -21,6 +27,7 @@ interface CarouselBlock {
   timestamp?: number;
   totalFees?: number;
   blockSize?: number;
+  inscription?: Inscription | null;
 }
 
 const BlockCard = ({ block }: { block: CarouselBlock }) => {
@@ -32,45 +39,68 @@ const BlockCard = ({ block }: { block: CarouselBlock }) => {
 
   const cardClasses = block.isUpcoming
     ? "border-dashed border-blue-500/40 bg-blue-900/20"
-    : "border-[#f3814b]/40 bg-[#2e1f1a]/50";
+    : block.inscription
+      ? "border-green-500/40 bg-green-900/20"
+      : "border-orange-500/40 bg-orange-900/20";
 
   return (
-    <div className="relative pb-1">
-      <div
-        className={`mr-2 flex h-32 w-36 flex-shrink-0 cursor-grab flex-col justify-between rounded-lg border ${cardClasses} p-2 shadow-md transition-transform duration-300 ease-in-out active:cursor-grabbing sm:h-40 sm:w-48 sm:p-3`}
-      >
-        <div className="text-center">
-          <div className="font-mono text-lg font-bold text-white sm:text-2xl">
-            {block.isUpcoming ? `~${block.height}` : block.height}
-          </div>
-        </div>
-
-        <hr className="my-1 border-t border-white/10 sm:my-2" />
-
-        <div className="space-y-1 text-center font-mono text-white">
-          <div className="text-sm font-bold sm:text-lg">
-            {`${((block.totalFees ?? 0) / 100_000_000).toFixed(3)} tBTC`}
-          </div>
-          <div className="text-[10px] text-gray-400 sm:text-xs">
-            {(block.tx_count ?? 0).toLocaleString()} transactions
-          </div>
-        </div>
-
-        <hr className="my-1 border-t border-white/10 sm:my-2" />
-
-        <div className="text-center font-mono text-[10px] text-orange-400 sm:text-xs">
-          {block.isUpcoming ? "Upcoming" : timeAgo}
-        </div>
-      </div>
-      {block.isLatestConfirmed && (
-        <motion.div
-          className="absolute top-full left-1/2 mt-1 -translate-x-1/2"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+    <div className="flex-shrink-0">
+      <div className="relative pb-1">
+        <div
+          className={`mr-1 flex h-20 w-24 flex-shrink-0 cursor-grab flex-col justify-between rounded-lg border ${cardClasses} p-1.5 shadow-md transition-transform duration-200 ease-in-out active:cursor-grabbing sm:mr-1.5 sm:h-28 sm:w-32 lg:mr-2 lg:h-36 lg:w-44`}
         >
-          <div className="h-0 w-0 border-x-8 border-b-8 border-x-transparent border-b-[#f3814b]" />
-        </motion.div>
+          <div className="text-center">
+            <div className="font-mono text-xs font-bold text-white sm:text-sm lg:text-xl">
+              {block.isUpcoming ? `~${block.height}` : block.height}
+            </div>
+          </div>
+
+          <hr className="my-0.5 border-t border-white/10 sm:my-1" />
+
+          <div className="space-y-0.5 text-center font-mono text-white">
+            <div className="text-xs font-bold sm:text-sm lg:text-base">
+              {`${((block.totalFees ?? 0) / 100_000_000).toFixed(3)} tBTC`}
+            </div>
+            <div className="text-xs text-orange-300 sm:text-xs lg:text-sm">
+              {(block.tx_count ?? 0).toLocaleString()} txs
+            </div>
+          </div>
+
+          {block.inscription && block.inscription.proposal ? (
+            <>
+              <hr className="my-0.5 border-t border-white/10 sm:my-1" />
+              <div className="flex items-center justify-center gap-1 text-center font-mono text-xs text-green-300 sm:text-xs lg:text-sm">
+                <SparklesIcon className="h-2.5 w-2.5 text-green-400 sm:h-3 sm:w-3" />
+                <span className="truncate">
+                  {block.inscription.proposal.ticker}
+                </span>
+              </div>
+            </>
+          ) : (
+            <hr className="my-0.5 border-t border-white/10 sm:my-1" />
+          )}
+
+          <div className="text-center font-mono text-xs text-orange-400 sm:text-xs lg:text-sm">
+            {block.isUpcoming ? "Upcoming" : timeAgo}
+          </div>
+        </div>
+        {block.isLatestConfirmed && (
+          <motion.div
+            className="absolute top-full left-1/2 mt-0.5 -translate-x-1/2 sm:mt-1"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <div className="h-0 w-0 border-x-2 border-b-2 border-x-transparent border-b-orange-500 sm:border-x-4 sm:border-b-4 lg:border-x-6 lg:border-b-6" />
+          </motion.div>
+        )}
+      </div>
+      {block.inscription?.proposal && (
+        <div className="mt-1 mr-1 w-24 text-center sm:mr-1.5 sm:w-32 lg:mr-2 lg:w-44">
+          <p className="px-1 text-[10px] text-green-300 sm:text-xs">
+            Proposal #{block.inscription.proposal.id} inscribed
+          </p>
+        </div>
       )}
     </div>
   );
@@ -170,15 +200,15 @@ export const BlockCarousel = ({
     confirmedBlocks.length > 0
       ? confirmedBlocks[confirmedBlocks.length - 1]
       : null;
-
   const confirmedCarouselBlocks: CarouselBlock[] = confirmedBlocks.map((b) => ({
     height: b.height,
     tx_count: b.tx_count,
     isUpcoming: false,
     isLatestConfirmed: latestConfirmedBlock?.height === b.height,
     timestamp: b.timestamp,
-    totalFees: b.extras?.totalFees,
+    totalFees: b.extras.totalFees,
     blockSize: b.size,
+    inscription: b.inscription,
   }));
 
   const upcomingCarouselBlock: CarouselBlock | null =
@@ -190,85 +220,99 @@ export const BlockCarousel = ({
           isLatestConfirmed: false,
           totalFees: upcomingBlock.totalFees,
           blockSize: upcomingBlock.blockSize,
+          inscription: null,
         }
       : null;
 
   if (error) {
     return (
-      <div className="w-full overflow-hidden p-4 text-center text-red-500">
+      <div className="extra-mobile-padding w-full overflow-hidden p-3 text-center text-red-400 sm:p-4">
         <div>Error loading blocks:</div>
-        <div className="text-sm text-gray-400">{error}</div>
-      </div>
-    );
-  }
-
-  if (
-    isLoading &&
-    confirmedCarouselBlocks.length === 0 &&
-    !upcomingCarouselBlock
-  ) {
-    return (
-      <div className="w-full overflow-hidden text-white">
-        <div className="text-center font-mono text-gray-400">
-          Loading recent blocks...
+        <div className="extra-mobile-text text-xs text-gray-500 sm:text-sm">
+          {error}
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="w-full overflow-hidden py-2 sm:py-4">
-      <div className="group relative">
-        <motion.div
-          ref={carouselRef}
-          className="flex cursor-grab snap-x snap-mandatory scroll-px-2 items-center overflow-x-auto px-2 pb-4 active:cursor-grabbing sm:scroll-px-6 sm:px-6"
-          style={
-            {
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
-            } as React.CSSProperties
-          }
-        >
-          <AnimatePresence initial={false}>
-            {confirmedCarouselBlocks.map((block) => (
-              <motion.div
-                key={`${block.height}-confirmed`}
-                layout
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-                className="snap-start"
-              >
-                <BlockCard block={block} />
-              </motion.div>
-            ))}
-            {upcomingCarouselBlock && [
-              <div
-                key="separator"
-                className="flex h-32 flex-col items-center justify-center self-center px-4 sm:h-40"
-              >
-                <div className="h-1/3 border-l-2 border-dashed border-gray-500/70" />
-                <div className="my-1 text-2xl text-gray-400">⇄</div>
-                <div className="h-1/3 border-l-2 border-dashed border-gray-500/70" />
-              </div>,
-              <motion.div
-                key={`${upcomingCarouselBlock.height}-upcoming`}
-                layout
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-                className="snap-start"
-              >
-                <BlockCard block={upcomingCarouselBlock} />
-              </motion.div>,
-            ]}
-          </AnimatePresence>
-        </motion.div>
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-black to-transparent opacity-50 transition-opacity group-hover:opacity-80" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-black to-transparent opacity-50 transition-opacity group-hover:opacity-80" />
+  if (isLoading) {
+    return (
+      <div className="w-full overflow-hidden">
+        <div className="extra-mobile-padding mb-3 px-3 text-center sm:mb-4 sm:px-4 lg:px-6">
+          <h2 className="extra-mobile-title bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 bg-clip-text text-lg font-bold text-transparent sm:text-2xl lg:text-3xl">
+            Bitcoin Blocks
+          </h2>
+          <p className="extra-mobile-text text-xs text-white/70 sm:text-sm lg:text-base">
+            Real-time Bitcoin blockchain activity
+          </p>
+        </div>
+        <div className="extra-mobile-padding flex gap-1.5 overflow-x-auto px-3 pb-3 sm:gap-2 sm:px-4 sm:pb-4 lg:px-6">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="mr-1.5 h-24 w-28 flex-shrink-0 animate-pulse rounded-lg border border-orange-500/20 bg-orange-900/20 sm:mr-2 sm:h-32 sm:w-36 lg:h-40 lg:w-48"
+            />
+          ))}
+        </div>
       </div>
+    );
+  }
+
+  const allBlocks = [
+    ...confirmedCarouselBlocks,
+    ...(upcomingCarouselBlock ? [upcomingCarouselBlock] : []),
+  ];
+
+  return (
+    <div className="w-full overflow-hidden">
+      <div className="extra-mobile-padding mb-3 px-3 text-center sm:mb-4 sm:px-4 lg:px-6">
+        <h2 className="extra-mobile-title bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 bg-clip-text text-lg font-bold text-transparent sm:text-2xl lg:text-3xl">
+          Bitcoin Blocks
+        </h2>
+        <p className="extra-mobile-text text-xs text-white/70 sm:text-sm lg:text-base">
+          Real-time Bitcoin blockchain activity
+        </p>
+      </div>
+
+      <div
+        ref={carouselRef}
+        className="scrollbar-hide extra-mobile-padding flex gap-1.5 overflow-x-auto px-3 pb-3 sm:gap-2 sm:px-4 sm:pb-4 lg:px-6"
+        style={{
+          scrollBehavior: "smooth",
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+          maxWidth: "100vw",
+        }}
+      >
+        <AnimatePresence mode="popLayout">
+          {allBlocks.map((block, index) => (
+            <motion.div
+              key={`${block.height}-${block.isUpcoming}`}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{
+                duration: 0.3,
+                delay: Math.min(index * 0.05, 0.5),
+              }}
+            >
+              <BlockCard block={block} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {latestConfirmedBlock && (
+        <div className="extra-mobile-padding extra-mobile-text px-3 text-center text-xs text-white/60 sm:px-4 sm:text-sm lg:px-6">
+          Latest Block: #{latestConfirmedBlock.height.toLocaleString()} •{" "}
+          {formatDistanceToNow(
+            new Date(latestConfirmedBlock.timestamp * 1000),
+            {
+              addSuffix: true,
+            },
+          )}
+        </div>
+      )}
     </div>
   );
 };

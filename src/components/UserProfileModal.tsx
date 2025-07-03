@@ -275,7 +275,7 @@ export function UserProfileModal({
               </h4>
               <p className="text-xs text-blue-300/80">
                 Your profile information will be stored securely and only used
-                for the BitMemes platform. You can update or delete your data
+                for the BitPill platform. You can update or delete your data
                 anytime.
               </p>
             </div>

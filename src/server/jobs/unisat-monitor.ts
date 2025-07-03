@@ -114,9 +114,16 @@ class UnisatMonitor {
         orderStatus.status === "confirmed"
       ) {
         const file = orderStatus.files[0];
-        if (orderStatus.status === "minted") {
+
+        // Only mark as inscribed if we have both inscription ID AND txid AND the status is confirmed
+        // This ensures the inscription is actually on the blockchain
+        if (
+          orderStatus.status === "confirmed" &&
+          file?.inscriptionId &&
+          file?.txid
+        ) {
           console.log(
-            `✅ Order minted, updating proposal ${inscription.proposalId} to inscribed status`,
+            `✅ Order confirmed and inscribed, updating proposal ${inscription.proposalId} to inscribed status`,
           );
 
           await db
@@ -128,6 +135,23 @@ class UnisatMonitor {
             `📝 Updated proposal ${inscription.proposalId} status to inscribed`,
           );
 
+          updateData.inscriptionId = file.inscriptionId;
+          updateData.txid = file.txid;
+          updateData.inscriptionUrl = `https://ordinals.com/inscription/${file.inscriptionId}`;
+          console.log(`📝 Added inscription ID: ${file.inscriptionId}`);
+          console.log(`📝 Added transaction ID: ${file.txid}`);
+        } else {
+          // For "sent" and "minted" status, keep as "inscribing" until confirmed
+          console.log(
+            `⏳ Order ${inscription.unisatOrderId} status: ${orderStatus.status}, keeping as inscribing until confirmed`,
+          );
+
+          await db
+            .update(proposals)
+            .set({ status: "inscribing" })
+            .where(eq(proposals.id, inscription.proposalId));
+
+          // Still update the inscription data if available
           if (file?.inscriptionId) {
             updateData.inscriptionId = file.inscriptionId;
             updateData.inscriptionUrl = `https://ordinals.com/inscription/${file.inscriptionId}`;
@@ -137,25 +161,12 @@ class UnisatMonitor {
             updateData.txid = file.txid;
             console.log(`📝 Added transaction ID: ${file.txid}`);
           }
-        } else if (file?.txid && file?.inscriptionId) {
-          updateData.inscriptionId = file.inscriptionId;
-          updateData.txid = file.txid;
-          updateData.inscriptionUrl = `https://ordinals.com/inscription/${file.inscriptionId}`;
-
-          console.log(
-            `✅ Inscription completed: ${file.inscriptionId} in tx ${file.txid}`,
-          );
-
-          await db
-            .update(proposals)
-            .set({ status: "inscribed" })
-            .where(eq(proposals.id, inscription.proposalId));
-
-          console.log(
-            `📝 Updated proposal ${inscription.proposalId} status to inscribed`,
-          );
         }
-      } else if (orderStatus.status === "payment_withinscription") {
+      } else if (
+        orderStatus.status === "payment_withinscription" &&
+        orderStatus.paidAmount >= orderStatus.amount &&
+        orderStatus.confirmedCount > 0
+      ) {
         console.log(
           `💰 Order ${inscription.unisatOrderId} payment confirmed, inscription processing...`,
         );
@@ -185,14 +196,30 @@ class UnisatMonitor {
           updateData.orderStatus = "minted";
           updateData.inscriptionUrl = `https://ordinals.com/inscription/${completedFile.inscriptionId}`;
 
-          await db
-            .update(proposals)
-            .set({ status: "inscribed" })
-            .where(eq(proposals.id, inscription.proposalId));
+          // Only mark as inscribed if the file status indicates it's actually confirmed
+          // Not just that it has an inscription ID
+          if (
+            completedFile.status === "confirmed" ||
+            completedFile.status === "sent"
+          ) {
+            await db
+              .update(proposals)
+              .set({ status: "inscribed" })
+              .where(eq(proposals.id, inscription.proposalId));
 
-          console.log(
-            `✅ Inscription completed: ${completedFile.inscriptionId} for proposal ${inscription.proposalId}`,
-          );
+            console.log(
+              `✅ Inscription completed and confirmed: ${completedFile.inscriptionId} for proposal ${inscription.proposalId}`,
+            );
+          } else {
+            await db
+              .update(proposals)
+              .set({ status: "inscribing" })
+              .where(eq(proposals.id, inscription.proposalId));
+
+            console.log(
+              `⏳ Inscription created but not yet confirmed: ${completedFile.inscriptionId} for proposal ${inscription.proposalId}`,
+            );
+          }
         } else if (
           orderStatus.paidAmount >= orderStatus.amount &&
           orderStatus.pendingCount > 0
@@ -377,4 +404,16 @@ class UnisatMonitor {
   }
 }
 
-export const unisatMonitor = new UnisatMonitor();
+declare global {
+  var unisatMonitorInstance: UnisatMonitor;
+}
+
+function getUnisatMonitorInstance(): UnisatMonitor {
+  if (!global.unisatMonitorInstance) {
+    console.log("🛠️ Creating new UnisatMonitor instance");
+    global.unisatMonitorInstance = new UnisatMonitor();
+  }
+  return global.unisatMonitorInstance;
+}
+
+export const unisatMonitor = getUnisatMonitorInstance();
