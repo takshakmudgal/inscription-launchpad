@@ -95,9 +95,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (
-      orderStatus.status === "sent" ||
-      orderStatus.status === "minted" ||
-      hasInscriptionId ||
+      orderStatus.status === "confirmed" ||
+      (orderStatus.status === "sent" && hasInscriptionId && hasTxid) ||
       forceComplete
     ) {
       if (file?.txid) {
@@ -117,37 +116,29 @@ export async function POST(request: NextRequest) {
         .where(eq(proposals.id, inscriptionRecord.proposalId));
 
       console.log(
-        `✅ Proposal ${inscriptionRecord.proposalId} marked as inscribed`,
+        `✅ Proposal ${inscriptionRecord.proposalId} marked as inscribed (status: ${orderStatus.status})`,
       );
-    } else if (orderStatus.status === "payment_withinscription") {
-      console.log(
-        `⚠️ Order has payment_withinscription status - checking for completion indicators`,
-      );
-
-      if (hasInscriptionId) {
-        console.log(
-          `🎯 Found inscription ID despite problematic status - marking as complete`,
-        );
-        if (file?.inscriptionId) {
-          updateData.inscriptionId = file.inscriptionId;
-          updateData.inscriptionUrl = `https://ordinals.com/inscription/${file.inscriptionId}`;
-        }
-        if (file?.txid) {
-          updateData.txid = file.txid;
-        }
-
-        await db
-          .update(proposals)
-          .set({
-            status: "inscribed",
-            updatedAt: new Date(),
-          })
-          .where(eq(proposals.id, inscriptionRecord.proposalId));
-
-        console.log(
-          `✅ Proposal ${inscriptionRecord.proposalId} marked as inscribed (despite payment_withinscription)`,
-        );
+    } else if (orderStatus.status === "minted" && hasInscriptionId && hasTxid) {
+      // For minted status, keep as inscribing unless we have all data
+      if (file?.txid) {
+        updateData.txid = file.txid;
       }
+      if (file?.inscriptionId) {
+        updateData.inscriptionId = file.inscriptionId;
+        updateData.inscriptionUrl = `https://ordinals.com/inscription/${file.inscriptionId}`;
+      }
+
+      await db
+        .update(proposals)
+        .set({
+          status: "inscribing",
+          updatedAt: new Date(),
+        })
+        .where(eq(proposals.id, inscriptionRecord.proposalId));
+
+      console.log(
+        `⏳ Proposal ${inscriptionRecord.proposalId} kept as inscribing (minted but not confirmed)`,
+      );
     }
 
     await db

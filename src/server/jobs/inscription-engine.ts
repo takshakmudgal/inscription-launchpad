@@ -359,7 +359,7 @@ class InscriptionEngine {
       return 0;
     }
 
-    return Math.max(0, currentBlockHeight - proposal.leaderStartBlock);
+    return Math.max(0, currentBlockHeight - proposal.leaderStartBlock + 1);
   }
 
   async updateBlockTracker(blockHeight: number) {
@@ -487,7 +487,8 @@ class InscriptionEngine {
                 ? Math.max(
                     0,
                     (await esploraService.getCurrentBlockHeight()) -
-                      activeProposals[0].leaderStartBlock,
+                      activeProposals[0].leaderStartBlock +
+                      1,
                   )
                 : 0,
             }
