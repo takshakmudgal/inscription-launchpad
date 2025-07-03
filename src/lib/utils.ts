@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { env } from "~/env.js";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -44,7 +45,8 @@ export function truncateAddress(address: string, start = 6, end = 4): string {
   return `${address.slice(0, start)}...${address.slice(-end)}`;
 }
 
-export function getExplorerUrl(txid: string, network = "testnet"): string {
+export function getExplorerUrl(txid: string): string {
+  const network = env.NEXT_PUBLIC_BITCOIN_NETWORK;
   const baseUrl =
     network === "mainnet"
       ? "https://blockstream.info/tx/"
@@ -53,5 +55,10 @@ export function getExplorerUrl(txid: string, network = "testnet"): string {
 }
 
 export function getOrdinalsUrl(inscriptionId: string): string {
-  return `https://ordinals.com/inscription/${inscriptionId}`;
+  const network = env.NEXT_PUBLIC_BITCOIN_NETWORK;
+  const baseUrl =
+    network === "mainnet"
+      ? "https://ordinals.com"
+      : "https://testnet.ordinals.com";
+  return `${baseUrl}/inscription/${inscriptionId}`;
 }
