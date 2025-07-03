@@ -200,7 +200,6 @@ export const BlockCarousel = ({
     confirmedBlocks.length > 0
       ? confirmedBlocks[confirmedBlocks.length - 1]
       : null;
-
   const confirmedCarouselBlocks: CarouselBlock[] = confirmedBlocks.map((b) => ({
     height: b.height,
     tx_count: b.tx_count,

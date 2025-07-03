@@ -139,6 +139,15 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
+export interface UpcomingBlock {
+  blockSize: number;
+  blockVSize: number;
+  nTx: number;
+  totalFees: number;
+  medianFee: number;
+  feeRange: number[];
+}
+
 export interface ProposalSubmission {
   name: string;
   ticker: string;
