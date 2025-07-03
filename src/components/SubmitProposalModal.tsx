@@ -20,7 +20,8 @@ export function SubmitProposalModal({
     name: "",
     ticker: "",
     description: "",
-    website: "",
+    twitter: "",
+    telegram: "",
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -33,7 +34,8 @@ export function SubmitProposalModal({
       name: "",
       ticker: "",
       description: "",
-      website: "",
+      twitter: "",
+      telegram: "",
     });
     setImageFile(null);
     setBannerFile(null);
@@ -243,15 +245,30 @@ export function SubmitProposalModal({
 
               <div>
                 <label className="extra-mobile-text mb-1.5 block text-sm font-medium text-white sm:mb-2">
-                  Website (optional)
+                  Twitter Handle (optional)
                 </label>
                 <input
-                  type="url"
-                  value={formData.website}
+                  type="text"
+                  value={formData.twitter}
                   onChange={(e) =>
-                    setFormData({ ...formData, website: e.target.value })
+                    setFormData({ ...formData, twitter: e.target.value })
                   }
-                  placeholder="https://example.com"
+                  placeholder="@username"
+                  className="extra-mobile-padding extra-mobile-text w-full rounded-xl border border-orange-500/20 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder-white/40 transition-all focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 focus:outline-none sm:px-3 sm:py-2 lg:px-4 lg:py-3 lg:text-base"
+                />
+              </div>
+
+              <div>
+                <label className="extra-mobile-text mb-1.5 block text-sm font-medium text-white sm:mb-2">
+                  Telegram Link (optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.telegram}
+                  onChange={(e) =>
+                    setFormData({ ...formData, telegram: e.target.value })
+                  }
+                  placeholder="https://t.me/yourgroup"
                   className="extra-mobile-padding extra-mobile-text w-full rounded-xl border border-orange-500/20 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder-white/40 transition-all focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 focus:outline-none sm:px-3 sm:py-2 lg:px-4 lg:py-3 lg:text-base"
                 />
               </div>

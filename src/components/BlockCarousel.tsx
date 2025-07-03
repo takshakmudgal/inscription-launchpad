@@ -44,54 +44,63 @@ const BlockCard = ({ block }: { block: CarouselBlock }) => {
       : "border-orange-500/40 bg-orange-900/20";
 
   return (
-    <div className="relative pb-1">
-      <div
-        className={`mr-1 flex h-20 w-24 flex-shrink-0 cursor-grab flex-col justify-between rounded-lg border ${cardClasses} p-1.5 shadow-md transition-transform duration-200 ease-in-out active:cursor-grabbing sm:mr-1.5 sm:h-28 sm:w-32 lg:mr-2 lg:h-36 lg:w-44`}
-      >
-        <div className="text-center">
-          <div className="font-mono text-xs font-bold text-white sm:text-sm lg:text-xl">
-            {block.isUpcoming ? `~${block.height}` : block.height}
-          </div>
-        </div>
-
-        <hr className="my-0.5 border-t border-white/10 sm:my-1" />
-
-        <div className="space-y-0.5 text-center font-mono text-white">
-          <div className="text-xs font-bold sm:text-sm lg:text-base">
-            {`${((block.totalFees ?? 0) / 100_000_000).toFixed(3)} tBTC`}
-          </div>
-          <div className="text-xs text-orange-300 sm:text-xs lg:text-sm">
-            {(block.tx_count ?? 0).toLocaleString()} txs
-          </div>
-        </div>
-
-        {block.inscription && block.inscription.proposal ? (
-          <>
-            <hr className="my-0.5 border-t border-white/10 sm:my-1" />
-            <div className="flex items-center justify-center gap-1 text-center font-mono text-xs text-green-300 sm:text-xs lg:text-sm">
-              <SparklesIcon className="h-2.5 w-2.5 text-green-400 sm:h-3 sm:w-3" />
-              <span className="truncate">
-                {block.inscription.proposal.ticker}
-              </span>
-            </div>
-          </>
-        ) : (
-          <hr className="my-0.5 border-t border-white/10 sm:my-1" />
-        )}
-
-        <div className="text-center font-mono text-xs text-orange-400 sm:text-xs lg:text-sm">
-          {block.isUpcoming ? "Upcoming" : timeAgo}
-        </div>
-      </div>
-      {block.isLatestConfirmed && (
-        <motion.div
-          className="absolute top-full left-1/2 mt-0.5 -translate-x-1/2 sm:mt-1"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+    <div className="flex-shrink-0">
+      <div className="relative pb-1">
+        <div
+          className={`mr-1 flex h-20 w-24 flex-shrink-0 cursor-grab flex-col justify-between rounded-lg border ${cardClasses} p-1.5 shadow-md transition-transform duration-200 ease-in-out active:cursor-grabbing sm:mr-1.5 sm:h-28 sm:w-32 lg:mr-2 lg:h-36 lg:w-44`}
         >
-          <div className="h-0 w-0 border-x-2 border-b-2 border-x-transparent border-b-orange-500 sm:border-x-4 sm:border-b-4 lg:border-x-6 lg:border-b-6" />
-        </motion.div>
+          <div className="text-center">
+            <div className="font-mono text-xs font-bold text-white sm:text-sm lg:text-xl">
+              {block.isUpcoming ? `~${block.height}` : block.height}
+            </div>
+          </div>
+
+          <hr className="my-0.5 border-t border-white/10 sm:my-1" />
+
+          <div className="space-y-0.5 text-center font-mono text-white">
+            <div className="text-xs font-bold sm:text-sm lg:text-base">
+              {`${((block.totalFees ?? 0) / 100_000_000).toFixed(3)} tBTC`}
+            </div>
+            <div className="text-xs text-orange-300 sm:text-xs lg:text-sm">
+              {(block.tx_count ?? 0).toLocaleString()} txs
+            </div>
+          </div>
+
+          {block.inscription && block.inscription.proposal ? (
+            <>
+              <hr className="my-0.5 border-t border-white/10 sm:my-1" />
+              <div className="flex items-center justify-center gap-1 text-center font-mono text-xs text-green-300 sm:text-xs lg:text-sm">
+                <SparklesIcon className="h-2.5 w-2.5 text-green-400 sm:h-3 sm:w-3" />
+                <span className="truncate">
+                  {block.inscription.proposal.ticker}
+                </span>
+              </div>
+            </>
+          ) : (
+            <hr className="my-0.5 border-t border-white/10 sm:my-1" />
+          )}
+
+          <div className="text-center font-mono text-xs text-orange-400 sm:text-xs lg:text-sm">
+            {block.isUpcoming ? "Upcoming" : timeAgo}
+          </div>
+        </div>
+        {block.isLatestConfirmed && (
+          <motion.div
+            className="absolute top-full left-1/2 mt-0.5 -translate-x-1/2 sm:mt-1"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <div className="h-0 w-0 border-x-2 border-b-2 border-x-transparent border-b-orange-500 sm:border-x-4 sm:border-b-4 lg:border-x-6 lg:border-b-6" />
+          </motion.div>
+        )}
+      </div>
+      {block.inscription?.proposal && (
+        <div className="mt-1 mr-1 w-24 text-center sm:mr-1.5 sm:w-32 lg:mr-2 lg:w-44">
+          <p className="px-1 text-[10px] text-green-300 sm:text-xs">
+            Proposal #{block.inscription.proposal.id} inscribed
+          </p>
+        </div>
       )}
     </div>
   );

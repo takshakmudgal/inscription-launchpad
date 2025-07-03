@@ -4,7 +4,16 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Users, Clock, Bitcoin } from "lucide-react";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Users,
+  Clock,
+  Bitcoin,
+  Twitter,
+  Send,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useWallet } from "~/components/providers";
 import type { Proposal, Inscription } from "~/types";
@@ -260,6 +269,35 @@ export default function ProposalPage({ params }: ProposalPageProps) {
                             Website
                           </a>
                         )}
+                        {proposal.twitter && (
+                          <a
+                            href={
+                              proposal.twitter.startsWith("https://")
+                                ? proposal.twitter
+                                : `https://twitter.com/${proposal.twitter.replace(
+                                    /^@/,
+                                    "",
+                                  )}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-lg border border-amber-600/20 bg-white/5 px-3 py-1.5 text-xs text-white/80 transition-all hover:bg-white/10 hover:text-white sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+                          >
+                            <Twitter className="h-3 w-3 sm:h-4 sm:w-4" />
+                            Twitter
+                          </a>
+                        )}
+                        {proposal.telegram && (
+                          <a
+                            href={proposal.telegram}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-lg border border-amber-600/20 bg-white/5 px-3 py-1.5 text-xs text-white/80 transition-all hover:bg-white/10 hover:text-white sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+                          >
+                            <Send className="h-3 w-3 sm:h-4 sm:w-4" />
+                            Telegram
+                          </a>
+                        )}
 
                         {inscription?.inscriptionUrl && (
                           <a
@@ -432,6 +470,42 @@ export default function ProposalPage({ params }: ProposalPageProps) {
                       <span className="text-white">{proposal.votesDown}</span>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Competition Details */}
+              <div className="rounded-2xl border border-amber-600/20 bg-white/5 p-4 backdrop-blur-xl sm:p-6">
+                <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-white sm:text-xl">
+                  <ShieldCheck className="h-5 w-5 text-orange-400" />
+                  Competition Details
+                </h3>
+                <div className="space-y-3 text-sm">
+                  {proposal.leaderStartBlock && (
+                    <div className="flex justify-between">
+                      <span className="text-white/70">
+                        Became Leader at Block:
+                      </span>
+                      <span className="text-white">
+                        {proposal.leaderStartBlock.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-white/70">
+                      Min. Blocks as Leader:
+                    </span>
+                    <span className="text-white">
+                      {proposal.leaderboardMinBlocks}
+                    </span>
+                  </div>
+                  {proposal.expirationBlock && (
+                    <div className="flex justify-between">
+                      <span className="text-white/70">Expires at Block:</span>
+                      <span className="text-white">
+                        {proposal.expirationBlock.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 

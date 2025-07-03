@@ -557,7 +557,7 @@ export default function HomePage() {
                   </motion.p>
                 </div>
 
-                <div className="grid max-w-full auto-rows-fr grid-cols-1 gap-4 overflow-hidden sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid max-w-full auto-rows-fr grid-cols-1 gap-4 overflow-hidden pt-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {launchedProposals.slice(0, 8).map((proposal, index) => (
                     <motion.div
                       key={proposal.id}
@@ -577,7 +577,7 @@ export default function HomePage() {
                         <div className="absolute -top-2 left-3 z-10 sm:-top-2 sm:left-4">
                           <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-yellow-400 px-2 py-1 text-xs font-bold text-black shadow-lg sm:gap-1.5 sm:px-3 sm:text-xs">
                             <TrophyIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                            <span>CHAMPION</span>
+                            <span className="whitespace-nowrap">CHAMPION</span>
                           </div>
                         </div>
 
