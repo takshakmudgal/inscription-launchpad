@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { db } from "~/server/db";
 import { proposals, users } from "~/server/db/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import type { ApiResponse, LeaderboardEntry } from "~/types";
 
 export async function GET(
@@ -36,6 +36,8 @@ export async function GET(
         updatedAt: proposals.updatedAt,
         submitterWallet: users.walletAddress,
         submitterUsername: users.username,
+        submitterCreatedAt: users.createdAt,
+        submitterUpdatedAt: users.updatedAt,
       })
       .from(proposals)
       .leftJoin(users, eq(proposals.submittedBy, users.id));
@@ -44,7 +46,7 @@ export async function GET(
       status === "active"
         ? await baseQuery
             .where(
-              sql`${proposals.status} IN ('active', 'leader', 'inscribing')`,
+              inArray(proposals.status, ["active", "leader", "inscribing"]),
             )
             .orderBy(desc(proposals.totalVotes))
             .limit(limit)
@@ -77,15 +79,19 @@ export async function GET(
         expirationBlock: row.expirationBlock ?? undefined,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
-        submitter: row.submitterWallet
-          ? {
-              id: row.submittedBy!,
-              walletAddress: row.submitterWallet,
-              username: row.submitterUsername ?? undefined,
-              createdAt: "",
-              updatedAt: "",
-            }
-          : undefined,
+        submitter:
+          row.submitterWallet &&
+          row.submittedBy &&
+          row.submitterCreatedAt &&
+          row.submitterUpdatedAt
+            ? {
+                id: row.submittedBy,
+                walletAddress: row.submitterWallet,
+                username: row.submitterUsername ?? undefined,
+                createdAt: row.submitterCreatedAt.toISOString(),
+                updatedAt: row.submitterUpdatedAt.toISOString(),
+              }
+            : undefined,
         rank: index + 1,
         score: score,
         isWinner: index === 0 && status === "active",
