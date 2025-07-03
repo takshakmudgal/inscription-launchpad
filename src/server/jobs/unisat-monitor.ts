@@ -43,14 +43,16 @@ class UnisatMonitor {
     console.log("🔍 Checking pending UniSat orders...");
 
     try {
+      // Monitor all inscriptions that have not yet resulted in an "inscribed" proposal, including
+      // those already in terminal UniSat states (sent/minted/confirmed/completed) so we can persist
+      // the inscriptionId/txid and flip the proposal status.
       const pendingInscriptions = await db
         .select()
         .from(inscriptions)
         .where(
-          sql`${inscriptions.unisatOrderId} IS NOT NULL 
-              AND (${inscriptions.orderStatus} IS NULL 
-                   OR ${inscriptions.orderStatus} NOT IN ('sent', 'minted', 'confirmed', 'completed')
-                   OR ${inscriptions.orderStatus} IN ('pending', 'processing', 'inscribing', 'payment_received', 'paid', 'payment_withinscription'))`,
+          sql`${inscriptions.unisatOrderId} IS NOT NULL
+              AND (${inscriptions.orderStatus} IS NULL
+                   OR ${inscriptions.orderStatus} NOT IN ('canceled', 'failed', 'timeout', 'refunded', 'stuck_timeout_auto_reset', 'stuck_auto_reset'))`,
         );
 
       if (pendingInscriptions.length === 0) {
@@ -64,6 +66,11 @@ class UnisatMonitor {
 
       for (const inscription of pendingInscriptions) {
         try {
+          // Skip if we've already completed this inscription
+          if (inscription.orderStatus === "completed") {
+            continue;
+          }
+
           await this.updateOrderStatus(inscription);
           await new Promise((resolve) => setTimeout(resolve, 500));
         } catch (error) {
@@ -81,13 +88,8 @@ class UnisatMonitor {
   }
 
   async updateOrderStatus(inscription: InscriptionRecord) {
-    if (!inscription.unisatOrderId) {
-      return;
-    }
-
-    console.log(`🔄 Checking order status: ${inscription.unisatOrderId}`);
-
     try {
+      // Check if we have a valid order ID
       if (!inscription.unisatOrderId) {
         console.warn(
           `⚠️  Inscription ${inscription.id} has no UniSat order ID`,
@@ -95,231 +97,118 @@ class UnisatMonitor {
         return;
       }
 
-      const orderStatus = await this.retryApiCall(
-        () => unisatService.getOrderStatus(inscription.unisatOrderId!),
-        3,
+      const orderStatus = await unisatService.getOrderStatus(
+        inscription.unisatOrderId,
       );
 
-      const updateData: Partial<InscriptionRecord> = {
-        orderStatus: orderStatus.status,
-      };
+      if (!orderStatus) {
+        console.log(
+          `⚠️  Could not fetch status for order ${inscription.unisatOrderId}`,
+        );
+        return;
+      }
 
       console.log(
-        `📊 Order ${inscription.unisatOrderId} status: ${orderStatus.status}`,
+        `🔄 Checking order status: ${inscription.unisatOrderId} - ${orderStatus.status}`,
       );
 
-      if (
-        orderStatus.status === "sent" ||
+      const updateData: Partial<InscriptionRecord> = {};
+      const file = orderStatus.files?.[0];
+
+      const isTerminalSuccess =
+        orderStatus.status === "payment_withinscription" ||
         orderStatus.status === "minted" ||
-        orderStatus.status === "confirmed"
-      ) {
-        const file = orderStatus.files[0];
+        orderStatus.status === "confirmed" ||
+        orderStatus.status === "sent" ||
+        orderStatus.status === "completed";
 
-        // Only mark as inscribed if we have both inscription ID AND txid AND the status is confirmed
-        // This ensures the inscription is actually on the blockchain
-        if (
-          orderStatus.status === "confirmed" &&
-          file?.inscriptionId &&
-          file?.txid
-        ) {
-          console.log(
-            `✅ Order confirmed and inscribed, updating proposal ${inscription.proposalId} to inscribed status`,
-          );
-
-          await db
-            .update(proposals)
-            .set({ status: "inscribed" })
-            .where(eq(proposals.id, inscription.proposalId));
-
-          console.log(
-            `📝 Updated proposal ${inscription.proposalId} status to inscribed`,
-          );
-
-          updateData.inscriptionId = file.inscriptionId;
-          updateData.txid = file.txid;
-          updateData.inscriptionUrl = `https://ordinals.com/inscription/${file.inscriptionId}`;
-          console.log(`📝 Added inscription ID: ${file.inscriptionId}`);
-          console.log(`📝 Added transaction ID: ${file.txid}`);
-        } else {
-          // For "sent" and "minted" status, keep as "inscribing" until confirmed
-          console.log(
-            `⏳ Order ${inscription.unisatOrderId} status: ${orderStatus.status}, keeping as inscribing until confirmed`,
-          );
-
-          await db
-            .update(proposals)
-            .set({ status: "inscribing" })
-            .where(eq(proposals.id, inscription.proposalId));
-
-          // Still update the inscription data if available
-          if (file?.inscriptionId) {
-            updateData.inscriptionId = file.inscriptionId;
-            updateData.inscriptionUrl = `https://ordinals.com/inscription/${file.inscriptionId}`;
-            console.log(`📝 Added inscription ID: ${file.inscriptionId}`);
-          }
-          if (file?.txid) {
-            updateData.txid = file.txid;
-            console.log(`📝 Added transaction ID: ${file.txid}`);
-          }
-        }
-      } else if (
-        orderStatus.status === "payment_withinscription" &&
-        orderStatus.paidAmount >= orderStatus.amount &&
-        orderStatus.confirmedCount > 0
-      ) {
-        console.log(
-          `💰 Order ${inscription.unisatOrderId} payment confirmed, inscription processing...`,
-        );
-        console.log(
-          `💰 Amount paid: ${orderStatus.paidAmount}/${orderStatus.amount} sats`,
-        );
-        console.log(
-          `📁 Files pending: ${orderStatus.pendingCount}, confirmed: ${orderStatus.confirmedCount}`,
-        );
-
-        const completedFile = orderStatus.files.find(
-          (file: {
-            filename: string;
-            inscriptionId?: string;
-            status: string;
-            txid?: string;
-          }) => file.inscriptionId && file.txid,
-        );
-
-        if (completedFile) {
-          console.log(
-            `🎯 Inscription completed! ID: ${completedFile.inscriptionId}`,
-          );
-
-          updateData.inscriptionId = completedFile.inscriptionId;
-          updateData.txid = completedFile.txid;
-          updateData.orderStatus = "minted";
-          updateData.inscriptionUrl = `https://ordinals.com/inscription/${completedFile.inscriptionId}`;
-
-          // Only mark as inscribed if the file status indicates it's actually confirmed
-          // Not just that it has an inscription ID
-          if (
-            completedFile.status === "confirmed" ||
-            completedFile.status === "sent"
-          ) {
-            await db
-              .update(proposals)
-              .set({ status: "inscribed" })
-              .where(eq(proposals.id, inscription.proposalId));
-
-            console.log(
-              `✅ Inscription completed and confirmed: ${completedFile.inscriptionId} for proposal ${inscription.proposalId}`,
-            );
-          } else {
-            await db
-              .update(proposals)
-              .set({ status: "inscribing" })
-              .where(eq(proposals.id, inscription.proposalId));
-
-            console.log(
-              `⏳ Inscription created but not yet confirmed: ${completedFile.inscriptionId} for proposal ${inscription.proposalId}`,
-            );
-          }
-        } else if (
-          orderStatus.paidAmount >= orderStatus.amount &&
-          orderStatus.pendingCount > 0
-        ) {
-          const createdTime = new Date(inscription.createdAt).getTime();
-          const now = Date.now();
-          const hoursElapsed = (now - createdTime) / (1000 * 60 * 60);
-
-          if (hoursElapsed < 2) {
-            console.log(
-              `⏳ Order ${inscription.unisatOrderId} payment confirmed ${hoursElapsed.toFixed(1)} hours ago, waiting for inscription processing...`,
-            );
-            await db
-              .update(proposals)
-              .set({ status: "inscribing" })
-              .where(eq(proposals.id, inscription.proposalId));
-          } else if (hoursElapsed < 12) {
-            console.warn(
-              `⚠️  Order ${inscription.unisatOrderId} inscription processing for ${hoursElapsed.toFixed(1)} hours - this may be normal during high network congestion`,
-            );
-            await db
-              .update(proposals)
-              .set({ status: "inscribing" })
-              .where(eq(proposals.id, inscription.proposalId));
-          } else {
-            console.error(
-              `🚨 Order ${inscription.unisatOrderId} stuck for ${hoursElapsed.toFixed(1)} hours - automatically resetting for retry`,
-            );
-
-            updateData.orderStatus = "stuck_timeout_auto_reset";
-
-            await db
-              .update(proposals)
-              .set({ status: "active" })
-              .where(eq(proposals.id, inscription.proposalId));
-
-            console.log(
-              `🔄 Automatically reset proposal ${inscription.proposalId} to active for retry after ${hoursElapsed.toFixed(1)} hours`,
-            );
-          }
-        } else if (orderStatus.paidAmount < orderStatus.amount) {
-          console.log(
-            `⏳ Order ${inscription.unisatOrderId} awaiting payment: ${orderStatus.paidAmount}/${orderStatus.amount} sats`,
-          );
-          await db
-            .update(proposals)
-            .set({ status: "inscribing" })
-            .where(eq(proposals.id, inscription.proposalId));
-        }
-      } else if (
-        orderStatus.status === "processing" ||
-        orderStatus.status === "inscribing" ||
-        orderStatus.status === "payment_received" ||
-        orderStatus.status === "paid"
-      ) {
-        console.log(`⏳ Order ${inscription.unisatOrderId} is processing...`);
-
-        await db
-          .update(proposals)
-          .set({ status: "inscribing" })
-          .where(eq(proposals.id, inscription.proposalId));
-      } else if (
+      const isFailed =
         orderStatus.status === "canceled" ||
         orderStatus.status === "failed" ||
         orderStatus.status === "timeout" ||
-        orderStatus.status === "refunded"
-      ) {
+        orderStatus.status === "refunded";
+
+      if (isTerminalSuccess && file?.inscriptionId) {
+        // SUCCESS CASE: We have a final status and an inscription ID.
+        console.log(
+          `✅ Order ${inscription.unisatOrderId} has inscription ID, status: ${orderStatus.status}. Marking as inscribed.`,
+        );
+
+        const currentProposal = await db
+          .select({ status: proposals.status })
+          .from(proposals)
+          .where(eq(proposals.id, inscription.proposalId))
+          .limit(1);
+
+        if (currentProposal[0]?.status !== "inscribed") {
+          await db
+            .update(proposals)
+            .set({ status: "inscribed", updatedAt: new Date() })
+            .where(eq(proposals.id, inscription.proposalId));
+          console.log(
+            `✅ Proposal ${inscription.proposalId} status updated to inscribed.`,
+          );
+        }
+
+        updateData.inscriptionId = file.inscriptionId;
+        updateData.inscriptionUrl = `https://ordinals.com/inscription/${file.inscriptionId}`;
+        if (file.txid) {
+          updateData.txid = file.txid;
+        }
+        updateData.orderStatus = "completed"; // Mark as done
+      } else if (isTerminalSuccess && !file?.inscriptionId) {
+        // WAITING CASE: Final status, but inscription data not yet populated by UniSat.
+        console.log(
+          `⏳ Order ${inscription.unisatOrderId} status: ${orderStatus.status}, waiting for inscription data from UniSat.`,
+        );
+        updateData.orderStatus = orderStatus.status; // Persist the current status
+      } else if (isFailed) {
+        // FAILURE CASE: Order failed. Reset proposal.
         console.error(
           `❌ Order ${inscription.unisatOrderId} failed with status: ${orderStatus.status}`,
         );
 
         await db
           .update(proposals)
-          .set({ status: "active" })
+          .set({
+            status: "active",
+            firstTimeAsLeader: null,
+            leaderStartBlock: null,
+            expirationBlock: null,
+            updatedAt: new Date(),
+          })
           .where(eq(proposals.id, inscription.proposalId));
 
+        updateData.orderStatus = orderStatus.status;
         console.log(
           `🔄 Automatically reset proposal ${inscription.proposalId} status to active for retry`,
         );
+      } else {
+        // PROCESSING CASE: Still in progress (paid, processing, etc.)
+        console.log(
+          `⏳ Order ${inscription.unisatOrderId} is processing with status: ${orderStatus.status}...`,
+        );
+        updateData.orderStatus = orderStatus.status; // Persist current status
       }
 
-      await db
-        .update(inscriptions)
-        .set(updateData)
-        .where(eq(inscriptions.id, inscription.id));
+      // Finally, update the inscription record in the DB
+      if (Object.keys(updateData).length > 0) {
+        await db
+          .update(inscriptions)
+          .set(updateData)
+          .where(eq(inscriptions.id, inscription.id));
 
-      console.log(
-        `📝 Updated inscription ${inscription.id} with status: ${orderStatus.status}`,
-      );
-    } catch (error) {
-      console.error(
-        `Error updating status for order ${inscription.unisatOrderId}:`,
-        error,
-      );
-
-      if (error instanceof Error && error.message.includes("API error")) {
-        console.warn(
-          `🔄 Temporary API error for ${inscription.unisatOrderId}, will retry on next cycle`,
+        console.log(
+          `📝 Updated inscription ${inscription.id} with data: ${JSON.stringify(
+            updateData,
+          )}`,
         );
       }
+    } catch (error) {
+      console.error(
+        `❌ Error updating order status for ${inscription.unisatOrderId}:`,
+        error,
+      );
     }
   }
 

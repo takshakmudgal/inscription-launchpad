@@ -166,11 +166,24 @@ export const pumpFunTokens = createTable(
   ],
 );
 
-export const blockTracker = createTable("block_tracker", {
-  id: integer().primaryKey().generatedByDefaultAsIdentity(),
-  lastProcessedBlock: integer("last_processed_block").notNull(),
-  lastProcessedHash: varchar("last_processed_hash", { length: 64 }).notNull(),
-  lastChecked: timestamp("last_checked", { withTimezone: true })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-});
+export const blockTracker = createTable(
+  "block_tracker",
+  {
+    id: integer().primaryKey().generatedByDefaultAsIdentity(),
+    lastProcessedBlock: integer("last_processed_block").notNull(),
+    lastProcessedHash: varchar("last_processed_hash", { length: 64 }),
+    consecutiveBlocksWithoutLaunches: integer(
+      "consecutive_blocks_without_launches",
+    )
+      .default(0)
+      .notNull(),
+    lastLaunchBlock: integer("last_launch_block"),
+    lastChecked: timestamp("last_checked", { withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (t) => [
+    index("block_tracker_block_idx").on(t.lastProcessedBlock),
+    index("block_tracker_checked_idx").on(t.lastChecked),
+  ],
+);

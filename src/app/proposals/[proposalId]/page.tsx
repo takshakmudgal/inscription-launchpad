@@ -22,9 +22,16 @@ interface ProposalPageProps {
   params: Promise<{ proposalId: string }>;
 }
 
+interface PumpFunToken {
+  mintAddress: string;
+  transactionSignature: string;
+  metadataUri: string;
+}
+
 export default function ProposalPage({ params }: ProposalPageProps) {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [inscription, setInscription] = useState<Inscription | null>(null);
+  const [pumpToken, setPumpToken] = useState<PumpFunToken | null>(null);
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState<"up" | "down" | null>(null);
   const [resolvedParams, setResolvedParams] = useState<{
@@ -52,6 +59,9 @@ export default function ProposalPage({ params }: ProposalPageProps) {
           setProposal(data.data);
           if (data.data.inscription) {
             setInscription(data.data.inscription);
+          }
+          if (data.data.pumpFunToken) {
+            setPumpToken(data.data.pumpFunToken);
           }
         } else {
           toast.error("Failed to load proposal");
@@ -370,6 +380,59 @@ export default function ProposalPage({ params }: ProposalPageProps) {
                     </div>
                   </div>
                 )}
+
+              {/* Pump.fun Token Details */}
+              {pumpToken && (
+                <div className="rounded-2xl border border-amber-600/20 bg-white/5 p-4 backdrop-blur-xl sm:p-6 lg:p-8">
+                  <h2 className="mb-3 flex items-center gap-2 text-xl font-bold text-white sm:mb-4 sm:gap-3 sm:text-2xl">
+                    <Image
+                      src="/solana_logo.png"
+                      alt="Solana"
+                      width={80}
+                      height={80}
+                    />
+                    Solana Pump.fun Token
+                  </h2>
+
+                  <div className="space-y-3 text-sm sm:space-y-4">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
+                      <span className="text-white/70">Mint Address:</span>
+                      <a
+                        href={`https://solscan.io/token/${pumpToken.mintAddress}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono break-all text-orange-400 hover:underline sm:col-span-2"
+                      >
+                        {pumpToken.mintAddress}
+                      </a>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
+                      <span className="text-white/70">Transaction:</span>
+                      <a
+                        href={`https://solscan.io/tx/${pumpToken.transactionSignature}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono break-all text-orange-400 hover:underline sm:col-span-2"
+                      >
+                        {pumpToken.transactionSignature}
+                      </a>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
+                      <span className="text-white/70">Metadata URI:</span>
+                      <a
+                        href={pumpToken.metadataUri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="break-all text-orange-400 hover:underline sm:col-span-2"
+                      >
+                        {pumpToken.metadataUri}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right Column - Voting & Stats */}

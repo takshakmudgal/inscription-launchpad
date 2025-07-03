@@ -84,6 +84,24 @@ class InscriptionEngine {
     const block = await esploraService.getBlockByHeight(blockHeight);
     console.log(`📋 Block ${blockHeight} hash: ${block.id}`);
 
+    let launchOccurred = false;
+
+    // Check for competition reset before processing proposals
+    const blockTrackerData = await this.getOrCreateBlockTracker();
+    const consecutiveBlocks =
+      blockTrackerData.consecutiveBlocksWithoutLaunches + 1;
+
+    if (consecutiveBlocks >= 5) {
+      console.log(
+        `🔄 COMPETITION RESET: 5 consecutive blocks without a launch`,
+      );
+      await this.resetCompetition(
+        "5 consecutive blocks without a successful launch",
+      );
+      await this.updateBlockTracker(blockHeight, 0, blockHeight);
+      return; // Stop processing this block after reset
+    }
+
     await this.expireOldProposals(blockHeight);
     const topProposal = await db
       .select()
@@ -94,6 +112,8 @@ class InscriptionEngine {
 
     if (topProposal.length === 0) {
       console.log("📝 No active or leader proposals found");
+      // If no proposals, just update the block tracker with incremented counter
+      await this.updateBlockTracker(blockHeight, consecutiveBlocks);
       return;
     }
 
@@ -125,6 +145,7 @@ class InscriptionEngine {
       `🏆 Current leader: ${currentWinner.name} (${currentWinner.ticker}) with ${currentWinner.totalVotes} votes`,
     );
 
+    // First time becoming leader - start the waiting period
     if (!currentWinner.firstTimeAsLeader) {
       console.log(
         `🎯 New champion detected! ${currentWinner.ticker} takes the crown!`,
@@ -135,7 +156,7 @@ class InscriptionEngine {
         .set({
           status: "leader",
           firstTimeAsLeader: new Date(),
-          leaderStartBlock: blockHeight,
+          leaderStartBlock: blockHeight + 1, // Start counting from the NEXT block
           leaderboardMinBlocks: 2,
           expirationBlock: blockHeight + 5,
           updatedAt: new Date(),
@@ -143,26 +164,33 @@ class InscriptionEngine {
         .where(eq(proposals.id, currentWinner.id));
 
       console.log(
-        `⏰ ${currentWinner.ticker} must maintain #1 position for 2 blocks to earn inscription (expires in 5 blocks if dethroned)`,
+        `⏰ ${currentWinner.ticker} must maintain #1 position for 2 blocks to earn inscription (started at block ${blockHeight})`,
       );
       return;
     }
 
-    const blocksAsLeader = await this.getBlocksAsLeader(
+    // Calculate blocks defended (not including the block they became leader)
+    const blocksDefended = await this.getBlocksDefended(
       { leaderStartBlock: currentWinner.leaderStartBlock },
       blockHeight,
     );
 
-    if (blocksAsLeader < 2) {
+    if (blocksDefended < 2) {
       console.log(
-        `⏳ ${currentWinner.ticker} defending leadership: ${blocksAsLeader}/2 blocks completed`,
+        `⏳ ${currentWinner.ticker} defending leadership: ${blocksDefended}/2 blocks defended (leader since block ${currentWinner.leaderStartBlock})`,
       );
+      // No launch, so update tracker with incremented counter
+      await this.updateBlockTracker(blockHeight, consecutiveBlocks);
       return;
     }
 
     console.log(
-      `🎉 INSCRIPTION READY! ${currentWinner.ticker} has successfully maintained #1 position for ${blocksAsLeader} blocks!`,
+      `🎉 INSCRIPTION READY! ${currentWinner.ticker} has successfully defended #1 position for ${blocksDefended} blocks!`,
     );
+
+    // Reset consecutive blocks counter since we're launching something
+    await this.updateBlockTracker(blockHeight, 0, blockHeight);
+    launchOccurred = true;
 
     try {
       const proposalForPumpFun: Proposal = {
@@ -282,11 +310,12 @@ class InscriptionEngine {
         );
 
         for (const dethronedLeader of dethronedLeaders) {
-          const blocksTheyLed =
-            blockHeight - (dethronedLeader.leaderStartBlock || blockHeight);
+          const blocksDefended = dethronedLeader.leaderStartBlock
+            ? Math.max(0, blockHeight - dethronedLeader.leaderStartBlock)
+            : 0;
 
           console.log(
-            `❌ ${dethronedLeader.ticker} DETHRONED! Lost leadership after ${blocksTheyLed} blocks (needed 2 to survive)`,
+            `❌ ${dethronedLeader.ticker} DETHRONED! Defended for ${blocksDefended} blocks (needed 2 to survive)`,
           );
 
           await db
@@ -351,7 +380,7 @@ class InscriptionEngine {
     }
   }
 
-  async getBlocksAsLeader(
+  async getBlocksDefended(
     proposal: { leaderStartBlock: number | null },
     currentBlockHeight: number,
   ): Promise<number> {
@@ -359,28 +388,77 @@ class InscriptionEngine {
       return 0;
     }
 
-    return Math.max(0, currentBlockHeight - proposal.leaderStartBlock + 1);
+    return Math.max(0, currentBlockHeight - proposal.leaderStartBlock);
   }
 
-  async updateBlockTracker(blockHeight: number) {
+  async getBlocksAsLeader(
+    proposal: { leaderStartBlock: number | null },
+    currentBlockHeight: number,
+  ): Promise<number> {
+    return this.getBlocksDefended(proposal, currentBlockHeight);
+  }
+
+  async getOrCreateBlockTracker() {
+    const existing = await db.select().from(blockTracker).limit(1);
+
+    if (existing.length > 0) {
+      return existing[0]!;
+    }
+
+    // If no tracker exists yet, start tracking from the CURRENT block height so we don't replay the entire Bitcoin history
+    const currentHeight = await esploraService.getCurrentBlockHeight();
+
+    // Create initial tracker
+    const [newTracker] = await db
+      .insert(blockTracker)
+      .values({
+        lastProcessedBlock: currentHeight,
+        lastProcessedHash: "", // will be populated when the first real block is processed
+        consecutiveBlocksWithoutLaunches: 0,
+        lastLaunchBlock: null,
+        lastChecked: new Date(),
+      })
+      .returning();
+
+    return newTracker!;
+  }
+
+  async updateBlockTracker(
+    blockHeight: number,
+    consecutiveBlocksWithoutLaunches?: number,
+    lastLaunchBlock?: number,
+  ) {
     try {
       const block = await esploraService.getBlockByHeight(blockHeight);
-
       const existing = await db.select().from(blockTracker).limit(1);
+
+      const updateData: any = {
+        lastProcessedBlock: blockHeight,
+        lastProcessedHash: block.id,
+        lastChecked: new Date(),
+      };
+
+      if (consecutiveBlocksWithoutLaunches !== undefined) {
+        updateData.consecutiveBlocksWithoutLaunches =
+          consecutiveBlocksWithoutLaunches;
+      }
+
+      if (lastLaunchBlock !== undefined) {
+        updateData.lastLaunchBlock = lastLaunchBlock;
+      }
 
       if (existing.length > 0) {
         await db
           .update(blockTracker)
-          .set({
-            lastProcessedBlock: blockHeight,
-            lastProcessedHash: block.id,
-            lastChecked: new Date(),
-          })
+          .set(updateData)
           .where(eq(blockTracker.id, existing[0]!.id));
       } else {
         await db.insert(blockTracker).values({
           lastProcessedBlock: blockHeight,
           lastProcessedHash: block.id,
+          consecutiveBlocksWithoutLaunches:
+            consecutiveBlocksWithoutLaunches ?? 0,
+          lastLaunchBlock: lastLaunchBlock ?? null,
           lastChecked: new Date(),
         });
       }
@@ -472,23 +550,26 @@ class InscriptionEngine {
         .from(proposals)
         .where(eq(proposals.status, "inscribed"));
 
+      const blockTrackerData = await this.getOrCreateBlockTracker();
+
       return {
         totalActive: activeProposals.length,
         currentLeaders: leaderProposals.length,
         currentlyInscribing: inscribingProposals.length,
         totalExpired: expiredProposals.length,
         totalInscribed: inscribedProposals.length,
+        consecutiveBlocksWithoutLaunches:
+          blockTrackerData.consecutiveBlocksWithoutLaunches,
         topProposal: activeProposals[0]
           ? {
               ticker: activeProposals[0].ticker,
               votes: activeProposals[0].totalVotes,
               status: activeProposals[0].status,
-              blocksAsLeader: activeProposals[0].leaderStartBlock
+              blocksDefended: activeProposals[0].leaderStartBlock
                 ? Math.max(
                     0,
                     (await esploraService.getCurrentBlockHeight()) -
-                      activeProposals[0].leaderStartBlock +
-                      1,
+                      activeProposals[0].leaderStartBlock,
                   )
                 : 0,
             }
@@ -502,6 +583,7 @@ class InscriptionEngine {
         currentlyInscribing: 0,
         totalExpired: 0,
         totalInscribed: 0,
+        consecutiveBlocksWithoutLaunches: 0,
         topProposal: null,
       };
     }

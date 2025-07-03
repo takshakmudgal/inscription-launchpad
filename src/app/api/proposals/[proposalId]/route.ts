@@ -1,8 +1,13 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { db } from "~/server/db";
-import { proposals, users } from "~/server/db/schema";
-import { eq, sql } from "drizzle-orm";
+import {
+  proposals,
+  users,
+  inscriptions,
+  pumpFunTokens,
+} from "~/server/db/schema";
+import { eq, sql, desc } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
@@ -78,12 +83,27 @@ export async function GET(
 
     const rank = (rankResult[0]?.count ?? 0) + 1;
 
-    // Return the proposal with rank
+    // Fetch latest inscription (if any)
+    const inscriptionResult = await db
+      .select()
+      .from(inscriptions)
+      .where(eq(inscriptions.proposalId, proposalId))
+      .orderBy(desc(inscriptions.createdAt))
+      .limit(1);
+
+    const pumpFunTokenResult = await db
+      .select()
+      .from(pumpFunTokens)
+      .where(eq(pumpFunTokens.proposalId, proposalId))
+      .limit(1);
+
     const proposalWithRank = {
       ...proposal,
       rank,
       score: proposal.totalVotes, // Simple scoring for now
       isWinner: rank === 1 && proposal.status === "inscribed",
+      inscription: inscriptionResult[0] ?? null,
+      pumpFunToken: pumpFunTokenResult[0] ?? null,
     };
 
     return NextResponse.json({
