@@ -85,7 +85,7 @@ class PumpFunService {
             },
             mint: mintKeypair.publicKey.toBase58(),
             denominatedInSol: "true",
-            amount: 0.15, // 0.15 $SOL initial buy for dev_account
+            amount: 0.15,
             slippage: 10,
             priorityFee: 0.0005,
             pool: "pump",
