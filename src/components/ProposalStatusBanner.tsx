@@ -1,10 +1,4 @@
-import {
-  CheckCircleIcon,
-  ShieldCheckIcon,
-  ClockIcon,
-} from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
-import { Zap } from "lucide-react";
 import React from "react";
 
 interface ProposalStatusBannerProps {
@@ -26,19 +20,17 @@ const ProposalStatusBanner: React.FC<ProposalStatusBannerProps> = ({
       bgColor: "bg-amber-500/10",
       borderColor: "border-amber-500/20",
       textColor: "text-amber-400",
-      icon: <ClockIcon className="h-5 w-5" />,
       title: "Blocks to Survival",
       value: remaining,
-      progressColor: "bg-gradient-to-r from-yellow-500 to-amber-500",
+      progressColor: "bg-amber-500",
     },
     inscribing: {
       bgColor: "bg-blue-500/10",
       borderColor: "border-blue-500/20",
       textColor: "text-blue-400",
-      icon: <Zap className="h-5 w-5" />,
       title: "Inscribing Now",
       value: "In Progress",
-      progressColor: "bg-gradient-to-r from-blue-500 to-cyan-500",
+      progressColor: "bg-blue-500",
     },
   };
 
@@ -59,7 +51,6 @@ const ProposalStatusBanner: React.FC<ProposalStatusBannerProps> = ({
           <div
             className={`flex items-center gap-2 text-sm font-semibold ${currentConfig.textColor}`}
           >
-            {currentConfig.icon}
             <span>{currentConfig.title}</span>
           </div>
           <span className={`text-sm font-bold ${currentConfig.textColor}`}>

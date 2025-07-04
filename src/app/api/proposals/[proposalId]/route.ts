@@ -88,13 +88,14 @@ export async function GET(
       .select()
       .from(inscriptions)
       .where(eq(inscriptions.proposalId, proposalId))
-      .orderBy(desc(inscriptions.createdAt))
+      .orderBy(desc(inscriptions.id))
       .limit(1);
 
     const pumpFunTokenResult = await db
       .select()
       .from(pumpFunTokens)
       .where(eq(pumpFunTokens.proposalId, proposalId))
+      .orderBy(desc(pumpFunTokens.id))
       .limit(1);
 
     const proposalWithRank = {

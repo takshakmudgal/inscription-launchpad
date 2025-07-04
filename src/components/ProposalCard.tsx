@@ -4,26 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  TrophyIcon,
-  FireIcon,
-  ClockIcon,
-  ArrowTrendingUpIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  EyeIcon,
-  SparklesIcon,
-} from "@heroicons/react/24/outline";
-import {
-  Crown,
-  Zap,
-  Timer,
-  TrendingUp,
-  Shield,
-  Target,
-  Gem,
-  Medal,
-} from "lucide-react";
+
 import type { Inscription } from "~/types";
 import ProposalStatusBanner from "./ProposalStatusBanner";
 
@@ -72,7 +53,6 @@ export function ProposalCard({
   onVote,
 }: ProposalCardProps) {
   const [isVoting, setIsVoting] = useState<"up" | "down" | null>(null);
-  const [imageError, setImageError] = useState(false);
 
   const handleVote = async (voteType: "up" | "down") => {
     if (isVoting) return;
@@ -91,38 +71,34 @@ export function ProposalCard({
     switch (status) {
       case "leader":
         return {
-          badge: "👑 LEADER",
-          badgeColor: "bg-gradient-to-r from-yellow-500 to-amber-500",
+          badge: "LEADER",
+          badgeColor: "bg-yellow-500",
           borderColor: "border-yellow-500/30",
           glowColor: "from-yellow-500 to-amber-400",
-          icon: <Crown className="h-3 w-3 sm:h-4 sm:w-4" />,
           bgGradient: "from-yellow-500/10 to-amber-500/5",
         };
       case "inscribing":
         return {
-          badge: "⚡ INSCRIBING",
-          badgeColor: "bg-gradient-to-r from-blue-500 to-cyan-500",
+          badge: "INSCRIBING",
+          badgeColor: "bg-blue-500",
           borderColor: "border-blue-500/30",
           glowColor: "from-blue-500 to-cyan-400",
-          icon: <Zap className="h-3 w-3 sm:h-4 sm:w-4" />,
           bgGradient: "from-blue-500/10 to-cyan-500/5",
         };
       case "inscribed":
         return {
-          badge: "🏆 CHAMPION",
-          badgeColor: "bg-gradient-to-r from-green-500 to-emerald-500",
+          badge: "CHAMPION",
+          badgeColor: "bg-green-500",
           borderColor: "border-green-500/30",
           glowColor: "from-green-500 to-emerald-400",
-          icon: <TrophyIcon className="h-3 w-3 sm:h-4 sm:w-4" />,
           bgGradient: "from-green-500/10 to-emerald-500/5",
         };
       case "expired":
         return {
-          badge: "💀 EXPIRED",
-          badgeColor: "bg-gradient-to-r from-red-500 to-rose-500",
+          badge: "EXPIRED",
+          badgeColor: "bg-red-500",
           borderColor: "border-red-500/30",
           glowColor: "from-red-500 to-rose-400",
-          icon: <XCircleIcon className="h-3 w-3 sm:h-4 sm:w-4" />,
           bgGradient: "from-red-500/10 to-rose-500/5",
         };
       default:
@@ -131,7 +107,6 @@ export function ProposalCard({
           badgeColor: "",
           borderColor: "border-orange-500/20",
           glowColor: "from-orange-500 to-orange-400",
-          icon: <Target className="h-3 w-3 sm:h-4 sm:w-4" />,
           bgGradient: "from-orange-500/5 to-orange-600/5",
         };
     }
@@ -155,22 +130,16 @@ export function ProposalCard({
             ? `${remaining} blocks to survival`
             : "Ready for inscription!",
         color: remaining > 0 ? "text-amber-400" : "text-green-400",
-        icon:
-          remaining > 0 ? (
-            <Timer className="h-3 w-3 sm:h-4 sm:w-4" />
-          ) : (
-            <CheckCircleIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-          ),
       };
     }
     return { show: false };
   };
 
-  const getRankIcon = () => {
-    if (rank === 1) return <Crown className="h-3 w-3 text-yellow-400" />;
-    if (rank === 2) return <Medal className="h-3 w-3 text-gray-300" />;
-    if (rank === 3) return <Medal className="h-3 w-3 text-amber-600" />;
-    return <Gem className="h-3 w-3 text-orange-400" />;
+  const getRankDisplay = () => {
+    if (rank === 1) return "#1";
+    if (rank === 2) return "#2";
+    if (rank === 3) return "#3";
+    return `#${rank}`;
   };
 
   const votePercentage = totalVotes > 0 ? (votesUp / totalVotes) * 100 : 50;
@@ -195,13 +164,7 @@ export function ProposalCard({
               animate={{ scale: 1, opacity: 1 }}
               className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs font-bold text-white shadow-lg backdrop-blur-sm sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs ${statusConfig.badgeColor}`}
             >
-              {statusConfig.icon}
-              <span className="hidden sm:inline">
-                {statusConfig.badge.split(" ")[1]}
-              </span>
-              <span className="sm:hidden">
-                {statusConfig.badge.split(" ")[0]}
-              </span>
+              <span>{statusConfig.badge}</span>
             </motion.div>
           </div>
         )}
@@ -220,9 +183,8 @@ export function ProposalCard({
             }`}
           >
             <div className="flex items-center gap-0.5">
-              {getRankIcon()}
               <span className="text-xs font-bold text-white sm:text-sm">
-                #{rank}
+                {getRankDisplay()}
               </span>
             </div>
           </motion.div>
@@ -241,175 +203,169 @@ export function ProposalCard({
           </div>
         )}
 
-        {/* Main Content */}
-        <div
-          className={`flex flex-1 flex-col p-3 ${bannerUrl ? "pt-3" : "pt-12"} sm:p-4 ${bannerUrl ? "sm:pt-4" : "sm:pt-16"} lg:p-6 ${bannerUrl ? "lg:pt-6" : "lg:pt-20"}`}
-        >
-          {/* Header Section */}
-          <div className="mb-3 flex items-center gap-2 sm:mb-4 sm:gap-3">
-            <div className="relative flex-shrink-0">
-              <motion.div whileHover={{ scale: 1.05 }} className="relative">
-                <Image
-                  src={imageError ? "/bitmemes_logo.png" : imageUrl}
-                  alt={name}
-                  width={40}
-                  height={40}
-                  className="h-10 w-10 rounded-lg object-cover shadow-lg sm:h-12 sm:w-12 sm:rounded-xl lg:h-14 lg:w-14 lg:rounded-2xl"
-                  onError={() => setImageError(true)}
-                />
-              </motion.div>
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="mb-1 flex items-center gap-1 sm:gap-2">
-                <h3 className="truncate text-sm font-bold text-white sm:text-base lg:text-lg">
-                  {name}
-                </h3>
-              </div>
-              <div className="mb-1 flex items-center gap-1 sm:gap-2">
-                <p className="font-mono text-xs font-semibold text-orange-400 sm:text-sm">
-                  ${ticker}
-                </p>
-                {status === "leader" && (
-                  <SparklesIcon className="h-3 w-3 text-yellow-400 sm:h-4 sm:w-4" />
-                )}
-              </div>
-              <p className="flex items-center gap-1 text-xs text-white/70">
-                <span>by</span>
-                <span className="truncate font-medium text-orange-300">
-                  {creator}
-                </span>
-              </p>
+        {/* Header */}
+        <div className="relative p-3 sm:p-4">
+          {/* Rank */}
+          <div className="absolute top-3 left-3 z-10 sm:top-4 sm:left-4">
+            <div className="flex items-center justify-center rounded-full bg-black/60 p-1.5 text-xs font-bold text-orange-400 backdrop-blur-sm sm:p-2 sm:text-sm">
+              <span className="text-orange-400">{getRankDisplay()}</span>
             </div>
           </div>
 
-          {/* Description */}
-          <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-white/80 sm:mb-4 sm:text-sm lg:text-base">
-            {description}
-          </p>
-
-          {/* Progress Bar for Leaders */}
-          {progressInfo.show && (
-            <div className="mb-3 sm:mb-4">
-              <div className="mb-1 flex items-center justify-between text-xs sm:mb-2 sm:text-sm">
-                <div
-                  className={`flex items-center gap-1 ${progressInfo.color} font-medium sm:gap-1.5`}
-                >
-                  {progressInfo.icon}
-                  <span className="truncate">{progressInfo.text}</span>
-                </div>
-                <span className="font-mono text-xs text-white/60 sm:text-sm">
-                  {Math.round(progressInfo.progress || 0)}%
-                </span>
-              </div>
-              <div className="relative h-1.5 overflow-hidden rounded-full bg-gray-800/50 sm:h-2">
-                <motion.div
-                  className="relative h-full bg-gradient-to-r from-amber-500 to-yellow-400"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressInfo.progress}%` }}
-                  transition={{ duration: 1.5, ease: "easeOut" }}
-                >
-                  <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                </motion.div>
-              </div>
-            </div>
-          )}
-
-          {/* Vote Progress */}
-          <div className="mb-3 sm:mb-4">
-            <div className="mb-1 flex items-center justify-between text-xs sm:mb-2 sm:text-sm">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <span className="flex items-center gap-0.5 font-medium text-green-400 sm:gap-1">
-                  <ArrowTrendingUpIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-                  {votesUp.toLocaleString()}
-                </span>
-                <span className="flex items-center gap-0.5 font-medium text-red-400 sm:gap-1">
-                  <XCircleIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-                  {votesDown.toLocaleString()}
-                </span>
-              </div>
-              <span className="font-mono text-xs text-white/60">
-                {totalVotes.toLocaleString()}
+          {/* Main Content */}
+          <div className="relative z-10 mt-8 sm:mt-10">
+            <div className="mb-2 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-white sm:text-xl lg:text-2xl">
+                {name}
+              </h3>
+              <span className="inline-flex items-center gap-1 rounded-md bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-400">
+                ${ticker}
               </span>
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-red-500/20 sm:h-2">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500"
-                style={{ width: `${votePercentage}%` }}
+            <p className="mb-3 line-clamp-2 text-xs text-gray-300 sm:text-sm lg:text-base">
+              {description}
+            </p>
+            <p className="text-xs text-gray-400 sm:text-sm">
+              Created by {creator}
+            </p>
+          </div>
+        </div>
+
+        {/* Progress Info for Leaders */}
+        {progressInfo.show && (
+          <div className="px-3 pb-2 sm:px-4">
+            <div
+              className={`flex items-center gap-2 text-xs ${progressInfo.color} sm:text-sm`}
+            >
+              <span className="font-medium">{progressInfo.text}</span>
+            </div>
+            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-700">
+              <motion.div
+                className="h-full bg-amber-500"
+                initial={{ width: "0%" }}
+                animate={{ width: `${progressInfo.progress}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
               />
             </div>
           </div>
+        )}
 
-          {/* Action Buttons */}
-          <div className="mt-auto flex gap-1.5 sm:gap-2">
-            {status === "active" && (
-              <>
-                <motion.button
-                  onClick={() => handleVote("up")}
-                  disabled={isVoting === "up"}
-                  className="group/btn flex flex-1 items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-green-600 to-green-500 py-2 text-xs font-medium text-white transition-all duration-200 hover:from-green-500 hover:to-green-400 hover:shadow-lg hover:shadow-green-500/25 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-2 sm:rounded-xl sm:py-3 sm:text-sm"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {isVoting === "up" ? (
-                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white sm:h-4 sm:w-4" />
-                  ) : (
-                    <ArrowTrendingUpIcon className="h-3 w-3 transition-transform group-hover/btn:scale-110 sm:h-4 sm:w-4" />
-                  )}
-                  <span className="hidden sm:inline">Vote Up</span>
-                  <span className="sm:hidden">Up</span>
-                </motion.button>
+        {/* Stats */}
+        <div className="flex-1 px-3 pb-2 sm:px-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="text-center">
+                <div className="text-xs text-gray-400 sm:text-sm">Votes</div>
+                <div className="text-sm font-bold text-white sm:text-base">
+                  {totalVotes}
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-gray-400 sm:text-sm">Support</div>
+              <div className="text-sm font-bold text-green-400 sm:text-base">
+                {votePercentage.toFixed(1)}%
+              </div>
+            </div>
+          </div>
 
-                <motion.button
-                  onClick={() => handleVote("down")}
-                  disabled={isVoting === "down"}
-                  className="group/btn flex flex-1 items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-red-600 to-red-500 py-2 text-xs font-medium text-white transition-all duration-200 hover:from-red-500 hover:to-red-400 hover:shadow-lg hover:shadow-red-500/25 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-2 sm:rounded-xl sm:py-3 sm:text-sm"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {isVoting === "down" ? (
-                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white sm:h-4 sm:w-4" />
-                  ) : (
-                    <XCircleIcon className="h-3 w-3 transition-transform group-hover/btn:scale-110 sm:h-4 sm:w-4" />
-                  )}
-                  <span className="hidden sm:inline">Vote Down</span>
-                  <span className="sm:hidden">Down</span>
-                </motion.button>
-              </>
-            )}
+          {/* Vote Progress Bar */}
+          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-700">
+            <motion.div
+              className="h-full bg-green-500"
+              initial={{ width: "0%" }}
+              animate={{ width: `${votePercentage}%` }}
+              transition={{ duration: 1, ease: "easeOut" }}
+            />
+          </div>
+        </div>
 
-            {status === "inscribed" && (
-              <Link
-                href={`/proposals/${id}`}
-                className="group/btn flex flex-1 items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 py-2 text-xs font-medium text-white transition-all duration-200 hover:from-orange-400 hover:to-orange-500 hover:shadow-lg hover:shadow-orange-500/25 sm:gap-2 sm:rounded-xl sm:py-3 sm:text-sm"
+        {/* Actions */}
+        <div className="border-t border-gray-700/50 p-3 sm:p-4">
+          <div className="flex gap-2">
+            {/* Vote Up */}
+            <motion.button
+              onClick={() => handleVote("up")}
+              disabled={isVoting !== null}
+              className="group/btn flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-green-600/80 py-2 text-xs font-medium text-white transition-all hover:bg-green-600 disabled:opacity-50 sm:gap-2 sm:text-sm"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <span className="transition-transform group-hover/btn:scale-110">
+                ↑
+              </span>
+              <span>{votesUp}</span>
+            </motion.button>
+
+            {/* Vote Down */}
+            <motion.button
+              onClick={() => handleVote("down")}
+              disabled={isVoting !== null}
+              className="group/btn flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-red-600/80 py-2 text-xs font-medium text-white transition-all hover:bg-red-600 disabled:opacity-50 sm:gap-2 sm:text-sm"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <span className="transition-transform group-hover/btn:scale-110">
+                ↓
+              </span>
+              <span>{votesDown}</span>
+            </motion.button>
+
+            {/* Leaderboard Button */}
+            <Link href="/#leaderboard">
+              <motion.button
+                className="group/btn flex items-center justify-center gap-1.5 rounded-lg bg-orange-600/80 px-3 py-2 text-xs font-medium text-white transition-all hover:bg-orange-600 sm:gap-2 sm:text-sm"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <TrophyIcon className="h-3 w-3 transition-transform group-hover/btn:scale-110 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">View Champion</span>
-                <span className="sm:hidden">Champion</span>
-              </Link>
-            )}
+                <span className="transition-transform group-hover/btn:scale-110">
+                  ↗
+                </span>
+              </motion.button>
+            </Link>
 
-            {(status === "leader" ||
-              status === "inscribing" ||
-              status === "expired") && (
-              <Link
-                href={`/proposals/${id}`}
-                className="group/btn flex flex-1 items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 py-2 text-xs font-medium text-white transition-all duration-200 hover:from-orange-400 hover:to-orange-500 hover:shadow-lg hover:shadow-orange-500/25 sm:gap-2 sm:rounded-xl sm:py-3 sm:text-sm"
+            {/* View Details */}
+            <Link href={`/proposals/${id}`}>
+              <motion.button
+                className="group/btn flex items-center justify-center gap-1.5 rounded-lg bg-gray-600/80 px-3 py-2 text-xs font-medium text-white transition-all hover:bg-gray-600 sm:gap-2 sm:text-sm"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <EyeIcon className="h-3 w-3 transition-transform group-hover/btn:scale-110 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">View Details</span>
-                <span className="sm:hidden">Details</span>
-              </Link>
-            )}
+                <span className="transition-transform group-hover/btn:scale-110">
+                  View
+                </span>
+              </motion.button>
+            </Link>
           </div>
         </div>
       </div>
 
+      {/* Voting feedback */}
+      {isVoting && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl bg-black/50 backdrop-blur-sm"
+        >
+          <div className="text-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="mx-auto h-8 w-8 rounded-full border-2 border-orange-500 border-t-transparent"
+            />
+            <p className="mt-2 text-sm font-medium text-white">
+              {isVoting === "up" ? "Voting up..." : "Voting down..."}
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Status Banner */}
       {(status === "leader" || status === "inscribing") && (
         <ProposalStatusBanner
           status={status}
-          remaining={progressInfo.remaining}
           progress={progressInfo.progress}
+          remaining={progressInfo.remaining}
         />
       )}
     </motion.div>

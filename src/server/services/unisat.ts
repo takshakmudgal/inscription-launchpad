@@ -98,18 +98,17 @@ export class UnisatService {
 
   generateInscriptionPayload(
     proposal: Proposal,
-    blockHeight: number,
+    _blockHeight: number,
   ): InscriptionPayload {
     return {
       project: "bitmemes",
       type: "meme-coin-inscription",
-      block: blockHeight,
       coin: {
         name: proposal.name,
         ticker: proposal.ticker,
         description: proposal.description,
         votes: proposal.totalVotes,
-        website: proposal.website,
+        website: `https://bitpill.fun/proposals/${proposal.id}`,
         twitter: proposal.twitter,
         telegram: proposal.telegram,
       },
@@ -126,7 +125,7 @@ export class UnisatService {
     const jsonString = JSON.stringify(payload, null, 2);
     const dataURL = `data:application/json;base64,${Buffer.from(jsonString).toString("base64")}`;
 
-    const filename = `bitmemes-${proposal.ticker.toLowerCase()}-${blockHeight}.json`;
+    const filename = `bitmemes-${proposal.ticker.toLowerCase()}-inscription.json`;
 
     const requestBody: UnisatInscriptionRequest = {
       receiveAddress,
@@ -209,10 +208,10 @@ export class UnisatService {
 
   async waitForInscriptionCompletion(
     orderId: string,
-    maxWaitTime = 3600000, 
+    maxWaitTime = 3600000,
   ): Promise<{ txid: string; inscriptionId?: string }> {
     const startTime = Date.now();
-    const pollInterval = 30000; 
+    const pollInterval = 30000;
 
     while (Date.now() - startTime < maxWaitTime) {
       try {
@@ -278,7 +277,7 @@ export class UnisatService {
       console.log(`💰 Send ${order.amount} sats to ${order.payAddress}`);
 
       return {
-        txid: "pending", 
+        txid: "pending",
         inscriptionId: undefined,
         orderId: order.orderId,
         payAddress: order.payAddress,

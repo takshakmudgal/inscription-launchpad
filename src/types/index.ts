@@ -120,7 +120,6 @@ export interface UpcomingBlock {
 export interface InscriptionPayload {
   project: string;
   type: string;
-  block: number;
   coin: {
     name: string;
     ticker: string;

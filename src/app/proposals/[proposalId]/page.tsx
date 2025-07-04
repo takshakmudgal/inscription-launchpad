@@ -123,35 +123,35 @@ export default function ProposalPage({ params }: ProposalPageProps) {
     switch (proposal.status) {
       case "leader":
         return {
-          text: "👑 LEADING",
-          className: "bg-gradient-to-r from-amber-400 to-orange-500 text-white",
+          text: "LEADING",
+          className: "bg-amber-500 text-white",
         };
       case "inscribing":
         return {
-          text: "⚡ INSCRIBING",
-          className: "bg-gradient-to-r from-orange-400 to-red-500 text-white",
+          text: "INSCRIBING",
+          className: "bg-orange-500 text-white",
         };
       case "inscribed":
         return {
-          text: "🏆 IMMORTAL",
-          className: "bg-gradient-to-r from-yellow-400 to-amber-500 text-white",
+          text: "IMMORTAL",
+          className: "bg-yellow-500 text-white",
         };
       case "expired":
         return {
-          text: "💀 ELIMINATED",
-          className: "bg-gradient-to-r from-red-400 to-red-600 text-white",
+          text: "ELIMINATED",
+          className: "bg-red-500 text-white",
         };
       default:
         return {
-          text: "🗳️ ACTIVE",
-          className: "bg-gradient-to-r from-amber-600 to-orange-600 text-white",
+          text: "ACTIVE",
+          className: "bg-amber-600 text-white",
         };
     }
   };
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-amber-950 via-stone-900 to-amber-950">
+      <div className="flex min-h-screen items-center justify-center bg-gray-950">
         <div className="space-y-4 text-center">
           <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-orange-500 border-t-transparent"></div>
           <p className="text-white/80">Loading proposal...</p>
@@ -162,7 +162,7 @@ export default function ProposalPage({ params }: ProposalPageProps) {
 
   if (!proposal) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-amber-950 via-stone-900 to-amber-950">
+      <div className="flex min-h-screen items-center justify-center bg-gray-950">
         <div className="space-y-4 text-center">
           <h1 className="text-2xl font-bold text-white">Proposal Not Found</h1>
           <Link
@@ -184,9 +184,9 @@ export default function ProposalPage({ params }: ProposalPageProps) {
       : 50;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-950 via-stone-900 to-amber-950">
+    <div className="min-h-screen bg-gray-950">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-amber-600/20 bg-amber-950/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-orange-500/20 bg-black/90 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between">
             <Link

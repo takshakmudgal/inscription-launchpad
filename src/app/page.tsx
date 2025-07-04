@@ -6,15 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Toaster, toast } from "sonner";
 import { useWallet as useSolanaWallet } from "@solana/wallet-adapter-react";
 import dynamic from "next/dynamic";
-import { UserIcon } from "lucide-react";
-import {
-  TrophyIcon,
-  ArrowTrendingUpIcon,
-  CheckCircleIcon,
-  EyeIcon,
-  SparklesIcon,
-  FireIcon,
-} from "@heroicons/react/24/outline";
 
 const WalletMultiButton = dynamic(
   async () =>
@@ -27,6 +18,7 @@ import { ProposalCard } from "~/components/ProposalCard";
 import { SubmitProposalModal } from "~/components/SubmitProposalModal";
 import { UserProfileModal } from "~/components/UserProfileModal";
 import { InscriptionModal } from "~/components/InscriptionModal";
+import HowItWorksModal from "~/components/HowItWorksModal";
 
 import { getLeaderboard, submitVote, createProposal } from "~/lib/api";
 import { useWallet } from "~/components/providers";
@@ -72,7 +64,8 @@ export default function HomePage() {
   const [latestBlock, setLatestBlock] = useState<BlockInfo | null>(null);
   const [isProposalModalOpen, setProposalModalOpen] = useState(false);
   const [isProfileModalOpen, setProfileModalOpen] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
+  const [isHowItWorksModalOpen, setHowItWorksModalOpen] = useState(false);
+  const [_isFetching, setIsFetching] = useState(true);
   const [selectedInscription, setSelectedInscription] =
     useState<Inscription | null>(null);
   const [showProfileTooltip, setShowProfileTooltip] = useState(false);
@@ -186,9 +179,9 @@ export default function HomePage() {
   return (
     <>
       <Toaster position="top-center" richColors />
-      <div className="no-scrollbar-x min-h-screen bg-gray-950">
+      <div className="no-scrollbar-x min-h-screen bg-black">
         {/* Header */}
-        <header className="sticky top-0 z-50 border-b border-orange-500/20 bg-gray-950/90 backdrop-blur-lg">
+        <header className="sticky top-0 z-50 border-b border-orange-500/20 bg-black/90 backdrop-blur-lg">
           <div className="container mx-auto flex h-14 max-w-full items-center justify-between px-3 sm:h-16 sm:px-4 lg:h-20 lg:px-6">
             <motion.div
               className="flex items-center gap-1.5 sm:gap-2 lg:gap-3"
@@ -204,9 +197,9 @@ export default function HomePage() {
                   height={24}
                   className="ultra-mobile-logo rounded-lg sm:h-8 sm:w-8 lg:h-10 lg:w-10"
                 />
-                <div className="absolute -inset-0.5 rounded-lg bg-gradient-to-r from-orange-500 to-orange-400 opacity-20 blur-sm"></div>
+                {/* <div className="absolute -inset-0.5 rounded-lg bg-gradient-to-r from-orange-500 to-orange-400 opacity-20 blur-sm"></div> */}
               </div>
-              <h1 className="extra-mobile-title bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 bg-clip-text text-base font-bold text-transparent sm:text-lg lg:text-2xl">
+              <h1 className="extra-mobile-title text-base font-bold text-orange-400 sm:text-lg lg:text-2xl">
                 BitPill
               </h1>
             </motion.div>
@@ -218,8 +211,15 @@ export default function HomePage() {
               transition={{ duration: 0.5, delay: 0.1 }}
             >
               <button
+                onClick={() => setHowItWorksModalOpen(true)}
+                className="hidden items-center gap-1.5 rounded-xl border border-orange-500/30 bg-white/5 px-3 py-1.5 text-xs font-medium text-white transition-all duration-200 hover:border-orange-500/50 hover:bg-white/10 sm:flex sm:px-4 sm:py-2 sm:text-sm lg:px-6 lg:py-3 lg:text-base"
+              >
+                <span>How it Works</span>
+              </button>
+
+              <button
                 onClick={handleOpenSubmitProposal}
-                className="hidden items-center gap-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-3 py-1.5 text-xs font-medium text-white transition-all duration-200 hover:from-orange-400 hover:to-orange-500 hover:shadow-md sm:flex sm:px-4 sm:py-2 sm:text-sm lg:px-6 lg:py-3 lg:text-base"
+                className="hidden items-center gap-1.5 rounded-xl bg-orange-500 px-3 py-1.5 text-xs font-medium text-white transition-all duration-200 hover:bg-orange-400 hover:shadow-md sm:flex sm:px-4 sm:py-2 sm:text-sm lg:px-6 lg:py-3 lg:text-base"
               >
                 <span>Submit Proposal</span>
               </button>
@@ -238,8 +238,8 @@ export default function HomePage() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-orange-600 sm:h-6 sm:w-6 lg:h-7 lg:w-7">
-                        <UserIcon className="h-3 w-3 text-white sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4" />
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 sm:h-6 sm:w-6 lg:h-7 lg:w-7">
+                        <span className="text-xs text-white">U</span>
                       </div>
                     </motion.button>
 
@@ -254,12 +254,9 @@ export default function HomePage() {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
-                              <motion.div
-                                animate={{ scale: [1, 1.1, 1] }}
-                                transition={{ duration: 2, repeat: Infinity }}
-                              >
-                                ✨
-                              </motion.div>
+                              <span className="font-bold text-orange-400">
+                                !
+                              </span>
                               Complete your profile to get started!
                             </div>
                             <button
@@ -285,7 +282,7 @@ export default function HomePage() {
 
         {/* Hero Section */}
         <section className="extra-mobile-padding relative overflow-hidden px-3 py-8 text-center sm:px-4 sm:py-12 lg:px-6 lg:py-20">
-          <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-orange-400/10"></div>
+          <div className="absolute inset-0 bg-orange-500/5"></div>
           <div className="relative z-10 container mx-auto max-w-4xl overflow-hidden">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -328,19 +325,19 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <p className="extra-mobile-text px-2 text-sm leading-relaxed text-white/70 sm:px-4 sm:text-lg lg:text-xl">
+              {/* <p className="extra-mobile-text px-2 text-sm leading-relaxed text-white/70 sm:px-4 sm:text-lg lg:text-xl">
                 The ultimate battleground for memes. Propose, vote, and get your
                 meme inscribed on Bitcoin and launched as a token on Solana.
-              </p>
+              </p> */}
 
-              <motion.button
+              {/* <motion.button
                 onClick={handleOpenSubmitProposal}
                 className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:from-orange-400 hover:to-orange-500 hover:shadow-lg sm:px-6 sm:py-3 sm:text-base lg:px-8 lg:py-4 lg:text-lg"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
                 Start Your Journey
-              </motion.button>
+              </motion.button> */}
             </motion.div>
           </div>
         </section>
@@ -355,70 +352,6 @@ export default function HomePage() {
             >
               <BlockCarousel onLatestBlock={setLatestBlock} />
             </motion.div>
-          </div>
-        </section>
-
-        {/* How It Works */}
-        <section className="extra-mobile-padding mb-12 overflow-hidden px-3 sm:mb-16 sm:px-4 lg:mb-20 lg:px-6">
-          <div className="container mx-auto max-w-6xl overflow-hidden">
-            <motion.h2
-              className="extra-mobile-title mb-8 text-center text-xl font-bold text-white sm:mb-12 sm:text-3xl lg:mb-16 lg:text-4xl"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              How It Works
-            </motion.h2>
-
-            <div className="grid max-w-full grid-cols-1 gap-3 overflow-hidden sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-8">
-              {[
-                {
-                  step: "1",
-                  title: "Submit Your Meme",
-                  desc: "Connect your wallet and submit a meme to join the current competition block.",
-                  icon: "🚀",
-                },
-                {
-                  step: "2",
-                  title: "Community Voting",
-                  desc: "The community votes on all submissions. The meme with the most votes wins the block.",
-                  icon: "🗳️",
-                },
-                {
-                  step: "3",
-                  title: "Winner Inscribed",
-                  desc: "The winning meme is permanently inscribed onto the Bitcoin blockchain as an Ordinal.",
-                  icon: "⚡",
-                },
-                {
-                  step: "4",
-                  title: "Launch on Pump.fun",
-                  desc: "Optionally, launch your winning meme as a new token on Solana.",
-                  icon: "🚀",
-                },
-              ].map((item, index) => (
-                <motion.div
-                  key={item.step}
-                  className="group relative"
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.4 + index * 0.1 }}
-                >
-                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-400 opacity-0 blur transition-opacity duration-300 group-hover:opacity-20"></div>
-                  <div className="extra-mobile-padding relative h-full rounded-2xl border border-orange-500/20 bg-white/5 p-3 text-center backdrop-blur-sm sm:p-4 lg:p-6">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 text-lg sm:mb-3 sm:h-12 sm:w-12 sm:text-xl lg:mb-4 lg:h-16 lg:w-16 lg:text-2xl">
-                      {item.icon}
-                    </div>
-                    <h3 className="extra-mobile-title mb-1.5 text-sm font-bold text-white sm:mb-2 sm:text-lg lg:mb-3 lg:text-xl">
-                      {item.title}
-                    </h3>
-                    <p className="extra-mobile-text text-xs leading-relaxed text-white/80 sm:text-sm lg:text-base">
-                      {item.desc}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
           </div>
         </section>
 
@@ -439,13 +372,7 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.1 }}
                   >
-                    <span className="inline-flex items-center gap-3">
-                      <FireIcon className="h-6 w-6 text-orange-400 sm:h-8 sm:w-8" />
-                      <span className="bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 bg-clip-text text-transparent">
-                        Active Competition
-                      </span>
-                      <FireIcon className="h-6 w-6 text-orange-400 sm:h-8 sm:w-8" />
-                    </span>
+                    <span className="text-orange-400">Active Competition</span>
                   </motion.h2>
                   <motion.p
                     className="mx-auto max-w-3xl text-sm text-white/80 sm:text-lg lg:text-xl"
@@ -509,9 +436,7 @@ export default function HomePage() {
                       whileTap={{ scale: 0.95 }}
                       className="group inline-flex items-center gap-3 rounded-xl border border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-orange-600/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all duration-300 hover:border-orange-400/50 hover:from-orange-500/20 hover:to-orange-600/20 hover:shadow-lg hover:shadow-orange-500/25 sm:px-8 sm:py-4 sm:text-base"
                     >
-                      <FireIcon className="h-4 w-4 text-orange-400 transition-colors group-hover:text-orange-300 sm:h-5 sm:w-5" />
                       <span>View All Proposals ({leaderboard.length})</span>
-                      <ArrowTrendingUpIcon className="h-4 w-4 text-orange-400 transition-transform group-hover:translate-x-1 sm:h-5 sm:w-5" />
                     </motion.button>
                   </motion.div>
                 )}
@@ -537,13 +462,7 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.1 }}
                   >
-                    <span className="inline-flex items-center gap-3">
-                      <TrophyIcon className="h-6 w-6 text-yellow-400 sm:h-8 sm:w-8" />
-                      <span className="bg-gradient-to-r from-yellow-400 via-orange-300 to-yellow-200 bg-clip-text text-transparent">
-                        Launched Champions
-                      </span>
-                      <TrophyIcon className="h-6 w-6 text-yellow-400 sm:h-8 sm:w-8" />
-                    </span>
+                    <span className="text-yellow-400">Launched Champions</span>
                   </motion.h2>
                   <motion.p
                     className="mx-auto max-w-3xl text-sm text-white/80 sm:text-lg lg:text-xl"
@@ -574,8 +493,7 @@ export default function HomePage() {
                       <div className="relative flex h-full min-h-[280px] flex-col rounded-2xl border border-white/10 bg-white/[.02] p-4 backdrop-blur-xl transition-all duration-300 group-hover:border-white/20 group-hover:bg-white/[.06] sm:min-h-[320px] sm:p-5 lg:min-h-[360px] lg:p-6">
                         {/* Champion badge */}
                         <div className="absolute -top-2 left-3 z-10 sm:-top-2 sm:left-4">
-                          <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-yellow-400 px-2 py-1 text-xs font-bold text-black shadow-lg sm:gap-1.5 sm:px-3 sm:text-xs">
-                            <TrophyIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                          <div className="flex items-center gap-1 rounded-full bg-yellow-500 px-2 py-1 text-xs font-bold text-black shadow-lg sm:gap-1.5 sm:px-3 sm:text-xs">
                             <span className="whitespace-nowrap">CHAMPION</span>
                           </div>
                         </div>
@@ -595,10 +513,6 @@ export default function HomePage() {
                                 className="h-12 w-12 rounded-xl object-cover shadow-xl ring-2 ring-yellow-400/30 sm:h-14 sm:w-14 sm:rounded-2xl lg:h-16 lg:w-16"
                               />
                               <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-yellow-400 to-orange-400 opacity-30 blur-sm sm:rounded-2xl" />
-                              {/* Sparkle effect */}
-                              <div className="absolute -top-1 -right-1">
-                                <SparklesIcon className="h-4 w-4 animate-pulse text-yellow-400 sm:h-5 sm:w-5" />
-                              </div>
                             </motion.div>
 
                             <div className="min-w-0 flex-1">
@@ -609,7 +523,9 @@ export default function HomePage() {
                                 <p className="font-mono text-xs font-semibold text-orange-400 sm:text-sm">
                                   ${proposal.ticker}
                                 </p>
-                                <CheckCircleIcon className="h-3 w-3 text-green-400 sm:h-4 sm:w-4" />
+                                <span className="text-xs text-green-400">
+                                  ✓
+                                </span>
                               </div>
                               <p className="text-xs text-white/70">
                                 Inscribed Champion
@@ -625,7 +541,6 @@ export default function HomePage() {
                           <div className="mb-4 flex items-center justify-between sm:mb-5">
                             <div className="flex items-center gap-3">
                               <div className="flex items-center gap-1 text-white/70">
-                                <ArrowTrendingUpIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                                 <span className="text-xs font-medium sm:text-sm">
                                   {proposal.totalVotes.toLocaleString()}
                                 </span>
@@ -635,15 +550,13 @@ export default function HomePage() {
 
                             <div className="flex items-center gap-2">
                               <span className="inline-flex items-center gap-1 rounded-lg bg-green-500/20 px-2 py-1 text-xs font-semibold text-green-400 backdrop-blur-sm sm:gap-1.5 sm:px-3 sm:py-1.5">
-                                <TrophyIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                 <span>Inscribed</span>
                               </span>
                             </div>
                           </div>
 
-                          <button className="mt-auto flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-yellow-500 py-2 text-xs font-bold text-black transition-all duration-300 group-hover:brightness-110 sm:py-2.5 sm:text-sm">
+                          <button className="mt-auto flex w-full items-center justify-center gap-2 rounded-lg bg-orange-500 py-2 text-xs font-bold text-black transition-all duration-300 hover:bg-orange-400 sm:py-2.5 sm:text-sm">
                             <span>View Champion</span>
-                            <EyeIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                           </button>
                         </div>
                       </div>
@@ -663,11 +576,9 @@ export default function HomePage() {
                       whileTap={{ scale: 0.95 }}
                       className="group inline-flex items-center gap-3 rounded-xl border border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-yellow-500/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all duration-300 hover:border-orange-400/50 hover:from-orange-500/20 hover:to-yellow-500/20 hover:shadow-lg hover:shadow-orange-500/25 sm:px-8 sm:py-4 sm:text-base"
                     >
-                      <TrophyIcon className="h-4 w-4 text-orange-400 transition-colors group-hover:text-yellow-400 sm:h-5 sm:w-5" />
                       <span>
                         View All Champions ({launchedProposals.length})
                       </span>
-                      <ArrowTrendingUpIcon className="h-4 w-4 text-orange-400 transition-transform group-hover:translate-x-1 sm:h-5 sm:w-5" />
                     </motion.button>
                   </motion.div>
                 )}
@@ -694,7 +605,7 @@ export default function HomePage() {
         <div className="fixed right-4 bottom-20 z-40 sm:hidden">
           <motion.button
             onClick={handleOpenSubmitProposal}
-            className="h-14 w-14 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-xl transition-all duration-300 hover:scale-110"
+            className="h-14 w-14 rounded-full bg-orange-500 text-white shadow-xl transition-all duration-300 hover:scale-110 hover:bg-orange-400"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -728,6 +639,11 @@ export default function HomePage() {
         onClose={() => setProfileModalOpen(false)}
         onSubmit={updateProfile}
         walletAddress={walletAddress || ""}
+      />
+
+      <HowItWorksModal
+        isOpen={isHowItWorksModalOpen}
+        onClose={() => setHowItWorksModalOpen(false)}
       />
 
       {selectedInscription && selectedInscription.proposal && (

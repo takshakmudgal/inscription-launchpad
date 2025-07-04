@@ -27,18 +27,17 @@ export class InscriptionService {
 
   generateInscriptionPayload(
     proposal: Proposal,
-    blockHeight: number,
+    _blockHeight: number,
   ): InscriptionPayload {
     return {
       project: "bitmemes",
       type: "meme-coin-inscription",
-      block: blockHeight,
       coin: {
         name: proposal.name,
         ticker: proposal.ticker,
         description: proposal.description,
         votes: proposal.totalVotes,
-        website: proposal.website,
+        website: `https://bitpill.fun/proposals/${proposal.id}`,
         twitter: proposal.twitter,
         telegram: proposal.telegram,
       },
@@ -118,7 +117,7 @@ export class InscriptionService {
         body: JSON.stringify({
           files: [
             {
-              name: `bitmemes-${payload.coin.ticker.toLowerCase()}-${payload.block}.json`,
+              name: `bitmemes-${payload.coin.ticker.toLowerCase()}-inscription.json`,
               content: JSON.stringify(payload, null, 2),
               type: "application/json",
             },
@@ -309,7 +308,6 @@ export class InscriptionService {
     return !!(
       payload.project &&
       payload.type &&
-      payload.block &&
       payload.coin?.name &&
       payload.coin?.ticker &&
       payload.coin?.description

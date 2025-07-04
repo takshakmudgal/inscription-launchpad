@@ -34,7 +34,7 @@ body {
   }
 
   body {
-    @apply bg-gray-950 text-white antialiased;
+    @apply bg-black text-white antialiased;
     overflow-x: hidden;
     width: 100%;
   }
@@ -42,7 +42,7 @@ body {
 
 /* Solana Wallet Button Styles */
 .wallet-adapter-button {
-  background: linear-gradient(to right, #ff6b47, #d4521a) !important;
+  background: #ff6b47 !important;
   border: 0 !important;
   color: white !important;
   font-weight: 500 !important;
@@ -52,7 +52,7 @@ body {
 }
 
 .wallet-adapter-button:not([disabled]):hover {
-  background: linear-gradient(to right, #e55a3c, #bf4915) !important;
+  background: #e55a3c !important;
   transform: translateY(-1px) !important;
 }
 
@@ -62,7 +62,7 @@ body {
 }
 
 .wallet-adapter-button-trigger {
-  background: linear-gradient(to right, #ff6b47, #d4521a) !important;
+  background: #ff6b47 !important;
 }
 
 .wallet-adapter-modal-wrapper {
@@ -71,7 +71,7 @@ body {
 }
 
 .wallet-adapter-modal {
-  background: linear-gradient(to bottom right, rgba(17, 24, 39, 0.95), rgba(42, 24, 16, 0.95)) !important;
+  background: rgba(0, 0, 0, 0.95) !important;
   backdrop-filter: blur(16px) !important;
   border: 1px solid rgba(255, 107, 71, 0.2) !important;
   border-radius: 1rem !important;
@@ -157,7 +157,7 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 a:focus-visible {
-  @apply outline-none ring-1 ring-orange-500/50 ring-offset-1 ring-offset-gray-950;
+  @apply outline-none ring-1 ring-orange-500/50 ring-offset-1 ring-offset-black;
 }
 
 /* Custom animations */
@@ -173,10 +173,7 @@ a:focus-visible {
 
 .animate-shimmer {
   animation: shimmer 3s infinite linear;
-  background: linear-gradient(to right,
-      #2a1810 4%,
-      #ff6b47 25%,
-      #2a1810 36%);
+  background: #ff6b47;
   background-size: 400px 100%;
 }
 
@@ -215,7 +212,7 @@ a:focus-visible {
 
 /* Button variants */
 .btn-primary {
-  @apply bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium rounded-xl transition-all duration-200 hover:from-orange-400 hover:to-orange-500 hover:shadow-md;
+  @apply bg-orange-500 text-white font-medium rounded-xl transition-all duration-200 hover:bg-orange-400 hover:shadow-md;
 }
 
 .btn-secondary {
@@ -228,11 +225,11 @@ a:focus-visible {
 
 /* Text variants */
 .text-gradient {
-  @apply bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 bg-clip-text text-transparent;
+  @apply text-orange-400;
 }
 
 .text-gradient-secondary {
-  @apply bg-gradient-to-r from-orange-300 to-orange-400 bg-clip-text text-transparent;
+  @apply text-orange-400;
 }
 
 /* Input styles */

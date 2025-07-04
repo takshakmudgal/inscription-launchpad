@@ -197,7 +197,7 @@ export function SubmitProposalModal({
           <div className="extra-mobile-padding sticky top-0 border-b border-orange-500/20 bg-gray-900/90 p-3 backdrop-blur-xl sm:p-4 lg:p-6">
             <div className="flex items-center justify-between">
               <h2 className="extra-mobile-title bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 bg-clip-text text-lg font-bold text-transparent sm:text-xl lg:text-2xl">
-                Submit Proposal
+                Create Meme
               </h2>
               <button
                 onClick={handleClose}

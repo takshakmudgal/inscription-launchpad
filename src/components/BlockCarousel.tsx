@@ -9,7 +9,8 @@ import type {
   UpcomingBlock,
   Inscription,
 } from "~/types";
-import { SparklesIcon } from "@heroicons/react/24/outline";
+
+import Link from "next/link";
 
 interface RecentBlocksResponse {
   blocks: BlockInfo[];
@@ -70,7 +71,6 @@ const BlockCard = ({ block }: { block: CarouselBlock }) => {
             <>
               <hr className="my-0.5 border-t border-white/10 sm:my-1" />
               <div className="flex items-center justify-center gap-1 text-center font-mono text-xs text-green-300 sm:text-xs lg:text-sm">
-                <SparklesIcon className="h-2.5 w-2.5 text-green-400 sm:h-3 sm:w-3" />
                 <span className="truncate">
                   {block.inscription.proposal.ticker}
                 </span>
@@ -96,10 +96,24 @@ const BlockCard = ({ block }: { block: CarouselBlock }) => {
         )}
       </div>
       {block.inscription?.proposal && (
-        <div className="mt-1 mr-1 w-24 text-center sm:mr-1.5 sm:w-32 lg:mr-2 lg:w-44">
-          <p className="px-1 text-[10px] text-green-300 sm:text-xs">
-            Proposal #{block.inscription.proposal.id} inscribed
-          </p>
+        <div className="mt-2 mr-1 w-24 sm:mr-1.5 sm:w-32 lg:mr-2 lg:w-44">
+          <div className="rounded border border-green-500/30 bg-green-500/10 p-1.5 text-center">
+            <div className="mb-1 flex items-center justify-center gap-1">
+              <span className="text-[10px] font-bold text-green-400 sm:text-xs">
+                INSCRIBED
+              </span>
+            </div>
+            <Link
+              href={`/proposals/${block.inscription.proposal.id}`}
+              className="block truncate text-[10px] font-medium text-green-300 transition-colors hover:text-green-200 sm:text-xs"
+              title={`${block.inscription.proposal.name} ($${block.inscription.proposal.ticker})`}
+            >
+              ${block.inscription.proposal.ticker}
+            </Link>
+            <p className="mt-0.5 text-[9px] text-green-300/70 sm:text-[10px]">
+              Block {block.height}
+            </p>
+          </div>
         </div>
       )}
     </div>
@@ -239,7 +253,7 @@ export const BlockCarousel = ({
     return (
       <div className="w-full overflow-hidden">
         <div className="extra-mobile-padding mb-3 px-3 text-center sm:mb-4 sm:px-4 lg:px-6">
-          <h2 className="extra-mobile-title bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 bg-clip-text text-lg font-bold text-transparent sm:text-2xl lg:text-3xl">
+          <h2 className="extra-mobile-title text-lg font-bold text-orange-400 sm:text-2xl lg:text-3xl">
             Bitcoin Blocks
           </h2>
           <p className="extra-mobile-text text-xs text-white/70 sm:text-sm lg:text-base">
@@ -266,7 +280,7 @@ export const BlockCarousel = ({
   return (
     <div className="w-full overflow-hidden">
       <div className="extra-mobile-padding mb-3 px-3 text-center sm:mb-4 sm:px-4 lg:px-6">
-        <h2 className="extra-mobile-title bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 bg-clip-text text-lg font-bold text-transparent sm:text-2xl lg:text-3xl">
+        <h2 className="extra-mobile-title text-lg font-bold text-orange-400 sm:text-2xl lg:text-3xl">
           Bitcoin Blocks
         </h2>
         <p className="extra-mobile-text text-xs text-white/70 sm:text-sm lg:text-base">

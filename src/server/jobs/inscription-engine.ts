@@ -84,7 +84,7 @@ class InscriptionEngine {
     const block = await esploraService.getBlockByHeight(blockHeight);
     console.log(`📋 Block ${blockHeight} hash: ${block.id}`);
 
-    let launchOccurred = false;
+    // let launchOccurred = false;
 
     // Check for competition reset before processing proposals
     const blockTrackerData = await this.getOrCreateBlockTracker();
@@ -190,7 +190,7 @@ class InscriptionEngine {
 
     // Reset consecutive blocks counter since we're launching something
     await this.updateBlockTracker(blockHeight, 0, blockHeight);
-    launchOccurred = true;
+    // launchOccurred = true;
 
     try {
       const proposalForPumpFun: Proposal = {
@@ -256,12 +256,12 @@ class InscriptionEngine {
         metadata: JSON.stringify({
           project: "bitmemes",
           type: "meme-coin-inscription",
-          block: blockHeight,
           coin: {
             name: currentWinner.name,
             ticker: currentWinner.ticker,
             description: currentWinner.description,
             votes: currentWinner.totalVotes,
+            website: `https://bitpill.fun/proposals/${currentWinner.id}`,
           },
         }),
         unisatOrderId: inscriptionResult.orderId,

@@ -41,7 +41,7 @@ function LightningBolts() {
             ease: "easeInOut",
           }}
         >
-          ⚡
+          LIVE
         </motion.div>
       ))}
     </div>
@@ -166,9 +166,9 @@ export function BlockCounter() {
                 duration: 2,
                 ease: "easeInOut",
               }}
-              className="text-6xl"
+              className="text-6xl font-bold text-green-400"
             >
-              🎉
+              NEW!
             </motion.div>
             <motion.div
               initial={{ y: 20, opacity: 0 }}
@@ -452,7 +452,7 @@ export function BlockCounter() {
                   left: `${20 + i * 30}%`,
                 }}
               >
-                ⏰
+                •
               </motion.div>
             ))}
           </div>
@@ -483,9 +483,8 @@ export function BlockCounter() {
         />
 
         <motion.div
-          className="mb-4 text-2xl"
+          className="mb-4 text-2xl font-bold text-orange-400"
           animate={{
-            rotate: [0, 10, -10, 0],
             scale: [1, 1.1, 1],
           }}
           transition={{
@@ -494,7 +493,7 @@ export function BlockCounter() {
             ease: "easeInOut",
           }}
         >
-          ⚡
+          LIVE
         </motion.div>
 
         <motion.h3
@@ -522,31 +521,6 @@ export function BlockCounter() {
           the winner and permanently inscribed on the Bitcoin blockchain. The
           selection happens automatically based on the blockchain timestamp.
         </motion.p>
-        <div className="pointer-events-none absolute inset-0">
-          {["🏆", "⛏️", "📝"].map((icon, i) => (
-            <motion.div
-              key={i}
-              className="absolute text-lg text-white/10"
-              animate={{
-                x: [0, Math.random() * 100 - 50],
-                y: [0, Math.random() * 100 - 50],
-                rotate: [0, 360],
-                opacity: [0, 0.3, 0],
-              }}
-              transition={{
-                duration: Math.random() * 5 + 3,
-                repeat: Infinity,
-                delay: i * 1.5,
-              }}
-              style={{
-                left: `${20 + i * 25}%`,
-                top: `${30 + i * 10}%`,
-              }}
-            >
-              {icon}
-            </motion.div>
-          ))}
-        </div>
       </motion.div>
     </div>
   );
