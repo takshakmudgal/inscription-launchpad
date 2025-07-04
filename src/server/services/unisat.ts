@@ -98,11 +98,18 @@ export class UnisatService {
 
   generateInscriptionPayload(
     proposal: Proposal,
-    _blockHeight: number,
+    blockHeight: number,
   ): InscriptionPayload {
+    // Add unique identifiers to ensure each inscription is unique
+    const timestamp = Date.now();
+    const uniqueId = `${proposal.id}-${blockHeight}-${timestamp}`;
+
     return {
       project: "bitmemes",
       type: "meme-coin-inscription",
+      inscriptionId: uniqueId, // Add unique identifier
+      blockHeight: blockHeight, // Add block height
+      timestamp: timestamp, // Add timestamp
       coin: {
         name: proposal.name,
         ticker: proposal.ticker,
@@ -111,6 +118,13 @@ export class UnisatService {
         website: `https://bitpill.fun/proposals/${proposal.id}`,
         twitter: proposal.twitter,
         telegram: proposal.telegram,
+      },
+      // Add metadata to make each inscription unique
+      metadata: {
+        proposalId: proposal.id,
+        inscriptionBlock: blockHeight,
+        inscriptionTime: new Date().toISOString(),
+        competitionRound: uniqueId,
       },
     };
   }
@@ -125,7 +139,9 @@ export class UnisatService {
     const jsonString = JSON.stringify(payload, null, 2);
     const dataURL = `data:application/json;base64,${Buffer.from(jsonString).toString("base64")}`;
 
-    const filename = `bitmemes-${proposal.ticker.toLowerCase()}-inscription.json`;
+    // Make filename unique to prevent conflicts
+    const timestamp = Date.now();
+    const filename = `bitmemes-${proposal.ticker.toLowerCase()}-${proposal.id}-block${blockHeight}-${timestamp}.json`;
 
     const requestBody: UnisatInscriptionRequest = {
       receiveAddress,
@@ -140,6 +156,13 @@ export class UnisatService {
     };
 
     try {
+      console.log(
+        `🎯 Creating inscription order for ${proposal.ticker} at block ${blockHeight}`,
+      );
+      console.log(`📝 Filename: ${filename}`);
+      console.log(`📍 Receive address: ${receiveAddress}`);
+      console.log(`💰 Fee rate: ${this.feeRate} sat/vB`);
+
       const response = await fetch(`${this.baseUrl}/v2/inscribe/order/create`, {
         method: "POST",
         headers: {
@@ -151,6 +174,9 @@ export class UnisatService {
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(
+          `❌ UniSat API error response: ${response.status} - ${errorText}`,
+        );
         throw new Error(`UniSat API error: ${response.status} - ${errorText}`);
       }
 
@@ -158,12 +184,20 @@ export class UnisatService {
         (await response.json()) as UnisatInscriptionResponse;
 
       if (result.code !== 0) {
+        console.error(
+          `❌ UniSat API error code: ${result.code} - ${result.msg}`,
+        );
         throw new Error(`UniSat API error: ${result.msg}`);
       }
 
       console.log(
-        `✅ UniSat inscription order created: ${result.data.orderId}`,
+        `✅ NEW UniSat inscription order created: ${result.data.orderId}`,
       );
+      console.log(`📦 Order details:`);
+      console.log(`   Order ID: ${result.data.orderId}`);
+      console.log(`   Pay Address: ${result.data.payAddress}`);
+      console.log(`   Amount: ${result.data.amount} sats`);
+      console.log(`   Status: ${result.data.status}`);
 
       return {
         orderId: result.data.orderId,
@@ -171,7 +205,7 @@ export class UnisatService {
         amount: result.data.amount,
       };
     } catch (error) {
-      console.error("UniSat inscription order creation failed:", error);
+      console.error("❌ UniSat inscription order creation failed:", error);
       throw error;
     }
   }
@@ -270,7 +304,7 @@ export class UnisatService {
       );
 
       console.log(
-        `📦 Order created: ${order.orderId}, Payment: ${order.amount} sats to ${order.payAddress}`,
+        `📦 NEW Order created: ${order.orderId}, Payment: ${order.amount} sats to ${order.payAddress}`,
       );
 
       console.log("⚠️  Manual payment required to complete inscription");

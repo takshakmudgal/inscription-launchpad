@@ -120,6 +120,9 @@ export interface UpcomingBlock {
 export interface InscriptionPayload {
   project: string;
   type: string;
+  inscriptionId?: string;
+  blockHeight?: number;
+  timestamp?: number;
   coin: {
     name: string;
     ticker: string;
@@ -128,6 +131,12 @@ export interface InscriptionPayload {
     website?: string;
     twitter?: string;
     telegram?: string;
+  };
+  metadata?: {
+    proposalId: number;
+    inscriptionBlock: number;
+    inscriptionTime: string;
+    competitionRound: string;
   };
 }
 

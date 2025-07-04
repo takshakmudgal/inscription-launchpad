@@ -52,26 +52,21 @@ export const bitcoinWallet = {
 
       await (esploraService as any).ensureValidToken();
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      // Use axios instead of fetch for better reliability in Node.js environments
+      const axios = (await import("axios")).default;
 
-      const response = await fetch(
+      const response = await axios.get(
         `${esploraUrl}/address/${wallet.address}/utxo`,
         {
           headers: {
             Authorization: `Bearer ${(esploraService as any).accessToken}`,
             "Content-Type": "application/json",
           },
-          signal: controller.signal,
+          timeout: 10000,
         },
       );
 
-      clearTimeout(timeoutId);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch UTXOs: ${response.statusText}`);
-      }
-
-      const utxos = (await response.json()) as Array<{
+      const utxos = response.data as Array<{
         txid: string;
         vout: number;
         value: number;
@@ -81,32 +76,25 @@ export const bitcoinWallet = {
       const confirmedUTXOs: UTXO[] = [];
 
       for (const utxo of utxos) {
-        if (utxo.status.confirmed) {
-          const txController = new AbortController();
-          const txTimeoutId = setTimeout(() => txController.abort(), 30000);
+        const txResponse = await axios.get(`${esploraUrl}/tx/${utxo.txid}`, {
+          headers: {
+            Authorization: `Bearer ${(esploraService as any).accessToken}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 10000,
+        });
 
-          const txResponse = await fetch(`${esploraUrl}/tx/${utxo.txid}`, {
-            headers: {
-              Authorization: `Bearer ${(esploraService as any).accessToken}`,
-              "Content-Type": "application/json",
-            },
-            signal: txController.signal,
+        if (txResponse.status === 200) {
+          const txData = txResponse.data as {
+            vout: Array<{ scriptpubkey: string }>;
+          };
+
+          confirmedUTXOs.push({
+            txid: utxo.txid,
+            vout: utxo.vout,
+            value: utxo.value,
+            scriptPubKey: txData.vout[utxo.vout]?.scriptpubkey || "",
           });
-
-          clearTimeout(txTimeoutId);
-
-          if (txResponse.ok) {
-            const txData = (await txResponse.json()) as {
-              vout: Array<{ scriptpubkey: string }>;
-            };
-
-            confirmedUTXOs.push({
-              txid: utxo.txid,
-              vout: utxo.vout,
-              value: utxo.value,
-              scriptPubKey: txData.vout[utxo.vout]?.scriptpubkey || "",
-            });
-          }
         }
       }
 
