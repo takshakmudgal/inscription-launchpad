@@ -29,14 +29,15 @@ class PumpFunService {
     const mintKeypair = Keypair.generate();
 
     try {
-      if (!proposal.bannerUrl) {
-        throw new Error("Proposal has no banner image for token creation.");
+      const imageUrl = proposal.imageUrl || proposal.bannerUrl;
+      if (!imageUrl) {
+        throw new Error("Proposal has no image available for token creation.");
       }
 
-      const imageResponse = await fetch(proposal.bannerUrl);
+      const imageResponse = await fetch(imageUrl);
       if (!imageResponse.ok) {
         throw new Error(
-          `Failed to fetch image from ${proposal.bannerUrl}: ${imageResponse.statusText}`,
+          `Failed to fetch image from ${imageUrl}: ${imageResponse.statusText}`,
         );
       }
       const imageBlob = await imageResponse.blob();
@@ -48,7 +49,6 @@ class PumpFunService {
       formData.append("description", proposal.description);
       formData.append("twitter", proposal.twitter || "");
       formData.append("telegram", proposal.telegram || "");
-      // Use our website's proposal page as the website URL
       const proposalUrl = `https://bitmemes.fun/proposals/${proposal.id}`;
       formData.append("website", proposalUrl);
       formData.append("showName", "true");

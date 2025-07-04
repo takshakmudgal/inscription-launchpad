@@ -221,7 +221,7 @@ export default function HomePage() {
                 onClick={handleOpenSubmitProposal}
                 className="hidden items-center gap-1.5 rounded-xl bg-orange-500 px-3 py-1.5 text-xs font-medium text-white transition-all duration-200 hover:bg-orange-400 hover:shadow-md sm:flex sm:px-4 sm:py-2 sm:text-sm lg:px-6 lg:py-3 lg:text-base"
               >
-                <span>Submit Proposal</span>
+                <span>Create Meme</span>
               </button>
 
               <div className="ultra-mobile-gap flex items-center gap-1.5 sm:gap-2 lg:gap-3">

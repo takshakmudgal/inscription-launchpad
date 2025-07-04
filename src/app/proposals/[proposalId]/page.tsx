@@ -553,14 +553,14 @@ export default function ProposalPage({ params }: ProposalPageProps) {
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between">
+                  {/* <div className="flex justify-between">
                     <span className="text-white/70">
                       Min. Blocks as Leader:
                     </span>
                     <span className="text-white">
                       {proposal.leaderboardMinBlocks}
                     </span>
-                  </div>
+                  </div> */}
                   {proposal.expirationBlock && (
                     <div className="flex justify-between">
                       <span className="text-white/70">Expires at Block:</span>
