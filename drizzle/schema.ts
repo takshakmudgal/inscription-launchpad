@@ -24,16 +24,14 @@ export const proposalStatus = pgEnum("proposal_status", [
 export const voteType = pgEnum("vote_type", ["up", "down"]);
 
 export const bitmemesBlockTracker = pgTable("bitmemes_block_tracker", {
-  id: integer()
-    .primaryKey()
-    .generatedByDefaultAsIdentity({
-      name: "bitmemes_block_tracker_id_seq",
-      startWith: 1,
-      increment: 1,
-      minValue: 1,
-      maxValue: 2147483647,
-      cache: 1,
-    }),
+  id: integer().primaryKey().generatedByDefaultAsIdentity({
+    name: "bitmemes_block_tracker_id_seq",
+    startWith: 1,
+    increment: 1,
+    minValue: 1,
+    maxValue: 2147483647,
+    cache: 1,
+  }),
   lastProcessedBlock: integer("last_processed_block").notNull(),
   lastProcessedHash: varchar("last_processed_hash", { length: 64 }).notNull(),
   lastChecked: timestamp("last_checked", { withTimezone: true, mode: "string" })
@@ -44,16 +42,14 @@ export const bitmemesBlockTracker = pgTable("bitmemes_block_tracker", {
 export const bitmemesProposal = pgTable(
   "bitmemes_proposal",
   {
-    id: integer()
-      .primaryKey()
-      .generatedByDefaultAsIdentity({
-        name: "bitmemes_proposal_id_seq",
-        startWith: 1,
-        increment: 1,
-        minValue: 1,
-        maxValue: 2147483647,
-        cache: 1,
-      }),
+    id: integer().primaryKey().generatedByDefaultAsIdentity({
+      name: "bitmemes_proposal_id_seq",
+      startWith: 1,
+      increment: 1,
+      minValue: 1,
+      maxValue: 2147483647,
+      cache: 1,
+    }),
     name: varchar({ length: 50 }).notNull(),
     ticker: varchar({ length: 10 }).notNull(),
     description: varchar({ length: 280 }).notNull(),
@@ -73,7 +69,7 @@ export const bitmemesProposal = pgTable(
     }),
     leaderStartBlock: integer("leader_start_block"),
     leaderboardMinBlocks: integer("leaderboard_min_blocks")
-      .default(2)
+      .default(1)
       .notNull(),
     expirationBlock: integer("expiration_block"),
     creationBlock: integer("creation_block"),
@@ -120,16 +116,14 @@ export const bitmemesProposal = pgTable(
 export const bitmemesInscription = pgTable(
   "bitmemes_inscription",
   {
-    id: integer()
-      .primaryKey()
-      .generatedByDefaultAsIdentity({
-        name: "bitmemes_inscription_id_seq",
-        startWith: 1,
-        increment: 1,
-        minValue: 1,
-        maxValue: 2147483647,
-        cache: 1,
-      }),
+    id: integer().primaryKey().generatedByDefaultAsIdentity({
+      name: "bitmemes_inscription_id_seq",
+      startWith: 1,
+      increment: 1,
+      minValue: 1,
+      maxValue: 2147483647,
+      cache: 1,
+    }),
     proposalId: integer("proposal_id").notNull(),
     blockHeight: integer("block_height").notNull(),
     blockHash: varchar("block_hash", { length: 64 }).notNull(),
@@ -177,16 +171,14 @@ export const bitmemesInscription = pgTable(
 export const bitmemesUser = pgTable(
   "bitmemes_user",
   {
-    id: integer()
-      .primaryKey()
-      .generatedByDefaultAsIdentity({
-        name: "bitmemes_user_id_seq",
-        startWith: 1,
-        increment: 1,
-        minValue: 1,
-        maxValue: 2147483647,
-        cache: 1,
-      }),
+    id: integer().primaryKey().generatedByDefaultAsIdentity({
+      name: "bitmemes_user_id_seq",
+      startWith: 1,
+      increment: 1,
+      minValue: 1,
+      maxValue: 2147483647,
+      cache: 1,
+    }),
     walletAddress: varchar("wallet_address", { length: 62 }),
     twitterId: varchar("twitter_id", { length: 50 }),
     username: varchar({ length: 50 }),
@@ -263,16 +255,14 @@ export const bitmemesPumpFunTokens = pgTable(
 export const bitmemesVote = pgTable(
   "bitmemes_vote",
   {
-    id: integer()
-      .primaryKey()
-      .generatedByDefaultAsIdentity({
-        name: "bitmemes_vote_id_seq",
-        startWith: 1,
-        increment: 1,
-        minValue: 1,
-        maxValue: 2147483647,
-        cache: 1,
-      }),
+    id: integer().primaryKey().generatedByDefaultAsIdentity({
+      name: "bitmemes_vote_id_seq",
+      startWith: 1,
+      increment: 1,
+      minValue: 1,
+      maxValue: 2147483647,
+      cache: 1,
+    }),
     userId: integer("user_id").notNull(),
     proposalId: integer("proposal_id").notNull(),
     voteType: voteType("vote_type").notNull(),

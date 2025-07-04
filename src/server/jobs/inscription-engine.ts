@@ -180,14 +180,14 @@ class InscriptionEngine {
           status: "leader",
           firstTimeAsLeader: new Date(),
           leaderStartBlock: blockHeight,
-          leaderboardMinBlocks: 2,
+          leaderboardMinBlocks: 1,
           expirationBlock: blockHeight + 5,
           updatedAt: new Date(),
         })
         .where(eq(proposals.id, currentWinner.id));
 
       console.log(
-        `⏰ ${currentWinner.ticker} must maintain #1 position for 2 blocks to earn inscription (started at block ${blockHeight})`,
+        `⏰ ${currentWinner.ticker} must maintain #1 position for 1 block to earn inscription (started at block ${blockHeight})`,
       );
       return;
     }
@@ -198,9 +198,9 @@ class InscriptionEngine {
       blockHeight,
     );
 
-    if (blocksDefended < 2) {
+    if (blocksDefended < 1) {
       console.log(
-        `⏳ ${currentWinner.ticker} defending leadership: ${blocksDefended}/2 blocks defended (leader since block ${currentWinner.leaderStartBlock})`,
+        `⏳ ${currentWinner.ticker} defending leadership: ${blocksDefended}/1 block defended (leader since block ${currentWinner.leaderStartBlock})`,
       );
       // No launch, so update tracker with incremented counter
       await this.updateBlockTracker(blockHeight, consecutiveBlocks);
@@ -340,7 +340,7 @@ class InscriptionEngine {
             : 0;
 
           console.log(
-            `❌ ${dethronedLeader.ticker} DETHRONED! Defended for ${blocksDefended} blocks (needed 2 to survive)`,
+            `❌ ${dethronedLeader.ticker} DETHRONED! Defended for ${blocksDefended} blocks (needed 1 to survive)`,
           );
 
           await db

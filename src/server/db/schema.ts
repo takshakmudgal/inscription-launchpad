@@ -71,7 +71,7 @@ export const proposals = createTable(
     }),
     leaderStartBlock: integer("leader_start_block"),
     leaderboardMinBlocks: integer("leaderboard_min_blocks")
-      .default(2)
+      .default(1)
       .notNull(),
     expirationBlock: integer("expiration_block"),
     creationBlock: integer("creation_block"),

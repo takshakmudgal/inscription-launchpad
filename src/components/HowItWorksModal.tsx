@@ -39,7 +39,7 @@ const steps = [
   {
     title: "Survive the Challenge",
     description:
-      "Leaders must maintain their #1 position for 2 consecutive blocks. Lose the lead = immediate elimination.",
+      "Leaders must maintain their #1 position for 1 consecutive block. Lose the lead = immediate elimination.",
     color: "text-orange-400",
     bgColor: "bg-orange-500/10",
     borderColor: "border-orange-500/20",
@@ -48,7 +48,7 @@ const steps = [
   {
     title: "Achieve Immortality",
     description:
-      "Survive 2 blocks as leader and your meme gets permanently inscribed on Bitcoin and launched as a token on Solana.",
+      "Survive 1 block as leader and your meme gets permanently inscribed on Bitcoin and launched as a token on Solana.",
     color: "text-green-400",
     bgColor: "bg-green-500/10",
     borderColor: "border-green-500/20",
@@ -147,7 +147,7 @@ export default function HowItWorksModal({
                     <li className="flex items-start gap-2">
                       <span className="text-red-400">•</span>
                       <span>
-                        Leaders must defend their position for exactly 2 blocks
+                        Leaders must defend their position for exactly 1 block
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
