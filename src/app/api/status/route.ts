@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { inscriptionEngine } from "~/server/jobs/inscription-engine";
-import { unisatMonitor } from "~/server/jobs/unisat-monitor";
+import { getInscriptionEngineInstance } from "~/server/jobs/inscription-engine";
+import { getUnisatMonitorInstance } from "~/server/jobs/unisat-monitor";
 import { esploraService } from "~/server/btc/esplora";
 import { db } from "~/server/db";
 import { proposals, inscriptions } from "~/server/db/schema";
@@ -50,6 +50,9 @@ interface SystemStatus {
     currentBlockHeight?: number;
   };
 }
+
+const inscriptionEngine = getInscriptionEngineInstance();
+const unisatMonitor = getUnisatMonitorInstance();
 
 export async function GET(): Promise<NextResponse<ApiResponse<SystemStatus>>> {
   try {

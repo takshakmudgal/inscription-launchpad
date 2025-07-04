@@ -49,7 +49,7 @@ class PumpFunService {
       formData.append("twitter", proposal.twitter || "");
       formData.append("telegram", proposal.telegram || "");
       // Use our website's proposal page as the website URL
-      const proposalUrl = `https://bitmemes.com/proposals/${proposal.id}`;
+      const proposalUrl = `https://bitmemes.fun/proposals/${proposal.id}`;
       formData.append("website", proposalUrl);
       formData.append("showName", "true");
 

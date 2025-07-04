@@ -1,12 +1,15 @@
-import cron from "node-cron";
 import { db } from "../db";
 import { inscriptions, proposals } from "../db/schema";
 import { eq, sql } from "drizzle-orm";
 import { unisatService } from "../services/unisat";
 import type { InscriptionRecord } from "~/types";
 
+const POLLING_INTERVAL = 30000; // 30 seconds
+const STUCK_ORDER_TIMEOUT_HOURS = 1; // 1 hour
+
 class UnisatMonitor {
   private isRunning = false;
+  private timeout: NodeJS.Timeout | null = null;
   private lastChecked = new Date();
 
   constructor() {
@@ -15,28 +18,39 @@ class UnisatMonitor {
   }
 
   start() {
-    cron.schedule("*/30 * * * * *", () => {
-      void (async () => {
-        if (this.isRunning) {
-          console.log("⏳ UniSat monitor already running, skipping...");
-          return;
-        }
+    if (this.isRunning) {
+      console.log("Monitor is already running.");
+      return;
+    }
+    console.log("✅ UniSat Monitor started");
+    this.isRunning = true;
+    void this.tick();
+  }
 
-        this.isRunning = true;
-        try {
-          await this.checkAllPendingOrders();
-          this.lastChecked = new Date();
-        } catch (error) {
-          console.error("❌ Error in UniSat monitor:", error);
-        } finally {
-          this.isRunning = false;
-        }
-      })();
-    });
+  stop() {
+    if (!this.isRunning) {
+      console.log("Monitor is not running.");
+      return;
+    }
+    console.log("⏹️ UniSat Monitor stopped");
+    this.isRunning = false;
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+      this.timeout = null;
+    }
+  }
 
-    console.log(
-      "⏰ UniSat monitor cron job started (every 30 seconds for faster inscription detection)",
-    );
+  private async tick() {
+    try {
+      await this.checkAllPendingOrders();
+      this.lastChecked = new Date();
+    } catch (error) {
+      console.error("❌ Error during UniSat monitor tick:", error);
+    }
+
+    if (this.isRunning) {
+      this.timeout = setTimeout(() => this.tick(), POLLING_INTERVAL);
+    }
   }
 
   async checkAllPendingOrders() {
@@ -78,8 +92,6 @@ class UnisatMonitor {
             `❌ Error checking order ${inscription.unisatOrderId}:`,
             error,
           );
-
-          await this.handleStuckOrder(inscription);
         }
       }
     } catch (error) {
@@ -162,22 +174,29 @@ class UnisatMonitor {
           `⏳ Order ${inscription.unisatOrderId} status: ${orderStatus.status}, waiting for inscription data from UniSat.`,
         );
         updateData.orderStatus = orderStatus.status; // Persist the current status
+
+        // Check if the order is stuck waiting for an inscription ID
+        const creationTime = new Date(inscription.createdAt).getTime();
+        const now = Date.now();
+        const hoursSinceCreation = (now - creationTime) / (1000 * 60 * 60);
+
+        if (hoursSinceCreation > STUCK_ORDER_TIMEOUT_HOURS) {
+          console.warn(
+            `🚨 Order ${inscription.unisatOrderId} is stuck in '${orderStatus.status}' for over ${STUCK_ORDER_TIMEOUT_HOURS} hour(s). Resetting.`,
+          );
+          await this.resetProposal(
+            inscription.proposalId,
+            "stuck_timeout_auto_reset",
+          );
+          updateData.orderStatus = "stuck_timeout_auto_reset";
+        }
       } else if (isFailed) {
         // FAILURE CASE: Order failed. Reset proposal.
         console.error(
           `❌ Order ${inscription.unisatOrderId} failed with status: ${orderStatus.status}`,
         );
 
-        await db
-          .update(proposals)
-          .set({
-            status: "active",
-            firstTimeAsLeader: null,
-            leaderStartBlock: null,
-            expirationBlock: null,
-            updatedAt: new Date(),
-          })
-          .where(eq(proposals.id, inscription.proposalId));
+        await this.resetProposal(inscription.proposalId, orderStatus.status);
 
         updateData.orderStatus = orderStatus.status;
         console.log(
@@ -212,6 +231,20 @@ class UnisatMonitor {
     }
   }
 
+  async resetProposal(proposalId: number, reason: string) {
+    console.log(`🔄 Resetting proposal ${proposalId} due to: ${reason}`);
+    await db
+      .update(proposals)
+      .set({
+        status: "active",
+        firstTimeAsLeader: null,
+        leaderStartBlock: null,
+        expirationBlock: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(proposals.id, proposalId));
+  }
+
   async retryApiCall<T>(
     apiCall: () => Promise<T>,
     maxRetries: number = 3,
@@ -234,41 +267,6 @@ class UnisatMonitor {
     throw new Error("Max retries exceeded");
   }
 
-  async handleStuckOrder(inscription: InscriptionRecord) {
-    try {
-      const createdTime = new Date(inscription.createdAt).getTime();
-      const now = Date.now();
-      const hoursElapsed = (now - createdTime) / (1000 * 60 * 60);
-      if (hoursElapsed > 24) {
-        console.warn(
-          `🚨 Order ${inscription.unisatOrderId} stuck for ${hoursElapsed.toFixed(1)} hours - automatic reset`,
-        );
-
-        await db
-          .update(proposals)
-          .set({ status: "active" })
-          .where(eq(proposals.id, inscription.proposalId));
-        await db
-          .update(inscriptions)
-          .set({ orderStatus: "stuck_auto_reset" })
-          .where(eq(inscriptions.id, inscription.id));
-
-        console.log(
-          `🔄 Automatically reset stuck proposal ${inscription.proposalId} after ${hoursElapsed.toFixed(1)} hours`,
-        );
-      } else if (hoursElapsed > 6) {
-        console.warn(
-          `⚠️  Order ${inscription.unisatOrderId} has been pending for ${hoursElapsed.toFixed(1)} hours`,
-        );
-      }
-    } catch (error) {
-      console.error(
-        `Error handling stuck order ${inscription.unisatOrderId}:`,
-        error,
-      );
-    }
-  }
-
   getStatus() {
     return {
       isRunning: this.isRunning,
@@ -277,32 +275,19 @@ class UnisatMonitor {
   }
 
   async triggerManually() {
-    if (this.isRunning) {
-      console.log("⏳ Monitor already running");
-      return;
+    console.log("⚙️ Triggering UniSat monitor manual run...");
+    if (this.timeout) {
+      clearTimeout(this.timeout);
     }
-
-    console.log("🔧 Manually triggering UniSat monitor...");
-    this.isRunning = true;
-    try {
-      await this.checkAllPendingOrders();
-      this.lastChecked = new Date();
-    } finally {
-      this.isRunning = false;
-    }
+    await this.tick();
   }
 }
 
-declare global {
-  var unisatMonitorInstance: UnisatMonitor;
-}
+let unisatMonitorInstance: UnisatMonitor | null = null;
 
-function getUnisatMonitorInstance(): UnisatMonitor {
-  if (!global.unisatMonitorInstance) {
-    console.log("🛠️ Creating new UnisatMonitor instance");
-    global.unisatMonitorInstance = new UnisatMonitor();
+export function getUnisatMonitorInstance(): UnisatMonitor {
+  if (!unisatMonitorInstance) {
+    unisatMonitorInstance = new UnisatMonitor();
   }
-  return global.unisatMonitorInstance;
+  return unisatMonitorInstance;
 }
-
-export const unisatMonitor = getUnisatMonitorInstance();

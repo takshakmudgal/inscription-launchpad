@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { inscriptionEngine } from "~/server/jobs/inscription-engine";
+import { getInscriptionEngineInstance } from "~/server/jobs/inscription-engine";
 import type { ApiResponse } from "~/types";
 
 interface CompetitionAction {
@@ -8,6 +8,8 @@ interface CompetitionAction {
   proposalId?: number;
   reason?: string;
 }
+
+const inscriptionEngine = getInscriptionEngineInstance();
 
 export async function POST(
   request: NextRequest,

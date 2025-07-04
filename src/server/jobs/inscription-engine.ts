@@ -1,4 +1,3 @@
-import cron from "node-cron";
 import { db } from "../db";
 import { proposals, inscriptions, blockTracker } from "../db/schema";
 import { eq, desc, sql } from "drizzle-orm";
@@ -8,8 +7,11 @@ import { pumpFunService } from "../services/pumpfun";
 import { env } from "~/env";
 import type { Proposal } from "~/types";
 
+const POLLING_INTERVAL = 10000; // 10 seconds
+
 class InscriptionEngine {
   private isRunning = false;
+  private timeout: NodeJS.Timeout | null = null;
 
   constructor() {
     console.log("🚀 Inscription Engine initialized");
@@ -17,31 +19,42 @@ class InscriptionEngine {
   }
 
   start() {
-    cron.schedule("*/2 * * * *", () => {
-      void (async () => {
-        if (this.isRunning) {
-          console.log("⏳ Inscription engine already running, skipping...");
-          return;
-        }
-
-        this.isRunning = true;
-        try {
-          await this.processNewBlocks();
-        } catch (error) {
-          console.error("❌ Error in inscription engine:", error);
-        } finally {
-          this.isRunning = false;
-        }
-      })();
-    });
-
-    console.log(
-      "⏰ Inscription engine cron job started (every 2 minutes for block processing)",
-    );
+    if (this.isRunning) {
+      console.log("Engine is already running.");
+      return;
+    }
+    console.log("✅ Inscription Engine started");
+    this.isRunning = true;
+    void this.tick();
   }
 
-  async processNewBlocks() {
-    console.log("🔍 Checking for new blocks...");
+  stop() {
+    if (!this.isRunning) {
+      console.log("Engine is not running.");
+      return;
+    }
+    console.log("⏹️ Inscription Engine stopped");
+    this.isRunning = false;
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+      this.timeout = null;
+    }
+  }
+
+  private async tick() {
+    try {
+      await this.processLatestBlock();
+    } catch (error) {
+      console.error("❌ Error during tick:", error);
+    }
+
+    if (this.isRunning) {
+      this.timeout = setTimeout(() => this.tick(), POLLING_INTERVAL);
+    }
+  }
+
+  async processLatestBlock() {
+    console.log("🔍 Checking for new block...");
 
     try {
       const currentBlockHeight = await esploraService.getCurrentBlockHeight();
@@ -52,31 +65,41 @@ class InscriptionEngine {
         .limit(1);
 
       let lastProcessedHeight = 0;
-      if (lastProcessed.length > 0) {
-        lastProcessedHeight = lastProcessed[0]!.lastProcessedBlock;
+      if (lastProcessed.length > 0 && lastProcessed[0]) {
+        lastProcessedHeight = lastProcessed[0].lastProcessedBlock;
+      }
+
+      if (lastProcessedHeight === 0) {
+        // First time running, initialize with current block height
+        console.log(
+          `🌱 First run. Initializing block tracker to current height: ${currentBlockHeight}`,
+        );
+        await this.updateBlockTracker(currentBlockHeight);
+        lastProcessedHeight = currentBlockHeight;
       }
 
       console.log(
         `📊 Current block: ${currentBlockHeight}, Last processed: ${lastProcessedHeight}`,
       );
 
-      for (
-        let height = lastProcessedHeight + 1;
-        height <= currentBlockHeight;
-        height++
-      ) {
-        console.log(`🧱 Processing block ${height}...`);
-
+      if (currentBlockHeight > lastProcessedHeight) {
+        const nextBlockToProcess = lastProcessedHeight + 1;
+        console.log(`🧱 Processing block ${nextBlockToProcess}...`);
         try {
-          await this.processBlock(height);
-          await this.updateBlockTracker(height);
-          console.log(`✅ Block ${height} processed successfully`);
+          await this.processBlock(nextBlockToProcess);
+          await this.updateBlockTracker(nextBlockToProcess);
+          console.log(`✅ Block ${nextBlockToProcess} processed successfully`);
         } catch (error) {
-          console.error(`❌ Error processing block ${height}:`, error);
+          console.error(
+            `❌ Error processing block ${nextBlockToProcess}:`,
+            error,
+          );
         }
+      } else {
+        console.log("⛓️ No new blocks to process.");
       }
     } catch (error) {
-      console.error("❌ Error in processNewBlocks:", error);
+      console.error("❌ Error in processLatestBlock:", error);
     }
   }
 
@@ -156,7 +179,7 @@ class InscriptionEngine {
         .set({
           status: "leader",
           firstTimeAsLeader: new Date(),
-          leaderStartBlock: blockHeight + 1, // Start counting from the NEXT block
+          leaderStartBlock: blockHeight,
           leaderboardMinBlocks: 2,
           expirationBlock: blockHeight + 5,
           updatedAt: new Date(),
@@ -235,9 +258,11 @@ class InscriptionEngine {
         `🎯 Starting Bitcoin inscription for champion: ${currentWinner.ticker}...`,
       );
 
+      const inscriptionBlockHeight = blockHeight + 1;
+
       const inscriptionResult = await inscriptionService.inscribe(
         proposalForInscription,
-        blockHeight,
+        inscriptionBlockHeight,
       );
 
       console.log(
@@ -246,7 +271,7 @@ class InscriptionEngine {
 
       await db.insert(inscriptions).values({
         proposalId: currentWinner.id,
-        blockHeight,
+        blockHeight: inscriptionBlockHeight,
         blockHash: block.id,
         txid: inscriptionResult.txid || "pending",
         inscriptionId: inscriptionResult.inscriptionId,
@@ -388,6 +413,9 @@ class InscriptionEngine {
       return 0;
     }
 
+    // The number of blocks defended is the number of blocks processed since leadership was achieved.
+    // For example, if leadership is gained at block 100, when processing block 101,
+    // they have defended 1 block (101 - 100 = 1).
     return Math.max(0, currentBlockHeight - proposal.leaderStartBlock);
   }
 
@@ -471,18 +499,11 @@ class InscriptionEngine {
   }
 
   async triggerManually() {
-    if (this.isRunning) {
-      console.log("⏳ Engine already running");
-      return;
+    console.log("⚙️ Triggering manual run...");
+    if (this.timeout) {
+      clearTimeout(this.timeout);
     }
-
-    console.log("🔧 Manually triggering competitive inscription engine...");
-    this.isRunning = true;
-    try {
-      await this.processNewBlocks();
-    } finally {
-      this.isRunning = false;
-    }
+    await this.tick();
   }
 
   async getStatus() {
@@ -653,16 +674,11 @@ class InscriptionEngine {
   }
 }
 
-declare global {
-  var inscriptionEngineInstance: InscriptionEngine;
-}
+let inscriptionEngineInstance: InscriptionEngine | null = null;
 
-function getInscriptionEngineInstance(): InscriptionEngine {
-  if (!global.inscriptionEngineInstance) {
-    console.log("🛠️ Creating new InscriptionEngine instance");
-    global.inscriptionEngineInstance = new InscriptionEngine();
+export function getInscriptionEngineInstance(): InscriptionEngine {
+  if (!inscriptionEngineInstance) {
+    inscriptionEngineInstance = new InscriptionEngine();
   }
-  return global.inscriptionEngineInstance;
+  return inscriptionEngineInstance;
 }
-
-export const inscriptionEngine = getInscriptionEngineInstance();
