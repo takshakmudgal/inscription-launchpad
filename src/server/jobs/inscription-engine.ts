@@ -258,7 +258,7 @@ class InscriptionEngine {
         `🎯 Starting Bitcoin inscription for champion: ${currentWinner.ticker}...`,
       );
 
-      const inscriptionBlockHeight = blockHeight + 1;
+      const inscriptionBlockHeight = blockHeight;
 
       const inscriptionResult = await inscriptionService.inscribe(
         proposalForInscription,
@@ -298,6 +298,7 @@ class InscriptionEngine {
       console.log(
         `📝 Inscription record created for champion proposal ${currentWinner.id}`,
       );
+      await this.assignNextLeader(blockHeight);
     } catch (error) {
       console.error(
         `❌ Error inscribing proposal ${currentWinner.ticker}:`,
@@ -670,6 +671,44 @@ class InscriptionEngine {
     } catch (error) {
       console.error("Error resetting competition:", error);
       throw error;
+    }
+  }
+
+  private async assignNextLeader(blockHeight: number) {
+    try {
+      const nextTop = await db
+        .select()
+        .from(proposals)
+        .where(eq(proposals.status, "active"))
+        .orderBy(desc(proposals.totalVotes))
+        .limit(1);
+
+      if (nextTop.length === 0) {
+        console.log("📝 No active proposals available to promote to leader");
+        return;
+      }
+
+      const newLeader = nextTop[0]!;
+
+      await db
+        .update(proposals)
+        .set({
+          status: "leader",
+          firstTimeAsLeader: new Date(),
+          leaderStartBlock: blockHeight,
+          leaderboardMinBlocks: 1,
+          expirationBlock: blockHeight + 5,
+          updatedAt: new Date(),
+        })
+        .where(eq(proposals.id, newLeader.id));
+
+      await this.handleLeadershipChanges(newLeader, blockHeight);
+
+      console.log(
+        `🎯 New leader selected for next block: ${newLeader.ticker} (${newLeader.totalVotes} votes)`,
+      );
+    } catch (error) {
+      console.error("❌ Error assigning next leader:", error);
     }
   }
 }

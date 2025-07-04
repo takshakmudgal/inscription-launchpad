@@ -148,6 +148,7 @@ export const bitmemesInscription = pgTable(
       "btree",
       table.blockHeight.asc().nullsLast().op("int4_ops"),
     ),
+    unique("inscription_block_height_unique").on(table.blockHeight),
     index("inscription_proposal_idx").using(
       "btree",
       table.proposalId.asc().nullsLast().op("int4_ops"),
