@@ -54,7 +54,7 @@ class PumpFunService {
       formData.append("showName", "true");
 
       console.log("Uploading metadata to pump.fun IPFS...");
-      const metadataResponse = await fetch("https://pump.fun/api/ipfs", {
+      const metadataResponse = await fetch("https://pumpportal.fun/api/ipfs", {
         method: "POST",
         body: formData,
       });
