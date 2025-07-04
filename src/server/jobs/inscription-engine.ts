@@ -143,18 +143,18 @@ class InscriptionEngine {
     const currentWinner = topProposal[0]!;
 
     await this.handleLeadershipChanges(currentWinner, blockHeight);
-    const existingInscription = await db
-      .select()
-      .from(inscriptions)
-      .where(eq(inscriptions.proposalId, currentWinner.id))
-      .limit(1);
+    // const existingInscription = await db
+    //   .select()
+    //   .from(inscriptions)
+    //   .where(eq(inscriptions.proposalId, currentWinner.id))
+    //   .limit(1);
 
-    if (existingInscription.length > 0) {
-      console.log(
-        `🔄 Proposal ${currentWinner.ticker} already has inscription in progress`,
-      );
-      return;
-    }
+    // if (existingInscription.length > 0) {
+    //   console.log(
+    //     `🔄 Proposal ${currentWinner.ticker} already has inscription in progress`,
+    //   );
+    //   return;
+    // }
 
     const minVotes = 1;
     if (currentWinner.totalVotes < minVotes) {
