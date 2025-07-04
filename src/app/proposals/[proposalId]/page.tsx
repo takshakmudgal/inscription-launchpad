@@ -536,8 +536,7 @@ export default function ProposalPage({ params }: ProposalPageProps) {
                 </div>
               </div>
 
-              {/* Competition Details */}
-              <div className="rounded-2xl border border-amber-600/20 bg-white/5 p-4 backdrop-blur-xl sm:p-6">
+              {/* <div className="rounded-2xl border border-amber-600/20 bg-white/5 p-4 backdrop-blur-xl sm:p-6">
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-white sm:text-xl">
                   <ShieldCheck className="h-5 w-5 text-orange-400" />
                   Competition Details
@@ -553,14 +552,14 @@ export default function ProposalPage({ params }: ProposalPageProps) {
                       </span>
                     </div>
                   )}
-                  {/* <div className="flex justify-between">
+                  <div className="flex justify-between">
                     <span className="text-white/70">
                       Min. Blocks as Leader:
                     </span>
                     <span className="text-white">
                       {proposal.leaderboardMinBlocks}
                     </span>
-                  </div> */}
+                  </div>
                   {proposal.expirationBlock && (
                     <div className="flex justify-between">
                       <span className="text-white/70">Expires at Block:</span>
@@ -570,7 +569,7 @@ export default function ProposalPage({ params }: ProposalPageProps) {
                     </div>
                   )}
                 </div>
-              </div>
+              </div> */}
 
               {/* Additional Info */}
               <div className="rounded-2xl border border-amber-600/20 bg-white/5 p-4 backdrop-blur-xl sm:p-6">
