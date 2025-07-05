@@ -1,4 +1,4 @@
-import axios, { type AxiosInstance } from "axios";
+import axios, { type AxiosInstance, type AxiosResponse } from "axios";
 import { env } from "~/env";
 import type { UpcomingBlock, BlockInfo } from "~/types";
 import { db } from "~/server/db";
@@ -16,6 +16,15 @@ export class MempoolService {
   private retryAttempts = 0;
   private maxRetries = 3;
   private retryDelay = 1000; // Start with 1 second
+  /**
+   * Minimum interval (in ms) before we hit the remote API again when we already
+   * have a successful response cached.  This helps to dramatically reduce the
+   * number of outbound requests ‑ especially when multiple API routes are
+   * called in quick succession – and therefore prevents us from spamming the
+   * mempool.space endpoint which often results in connection timeouts in a
+   * server-less environment.
+   */
+  private cacheTTL = 60_000; // 1 minute
 
   constructor() {
     this.mempoolApiUrl =
@@ -41,9 +50,37 @@ export class MempoolService {
   }
 
   async getBlocks(limit = 25): Promise<BlockInfo[]> {
+    // Return the cached value if it is still considered fresh so we don't make
+    // unnecessary network calls every time the endpoint is hit.
+    if (
+      this.lastSuccessfulFetch &&
+      Date.now() - this.lastSuccessfulFetch.timestamp < this.cacheTTL &&
+      this.lastSuccessfulFetch.blocks.length > 0
+    ) {
+      return this.lastSuccessfulFetch.blocks.slice(0, limit);
+    }
+
     let blockData: BlockInfo[] = [];
     try {
-      const response = await this.axiosInstance.get<BlockInfo[]>("/blocks");
+      // Retry the request a few times with exponential back-off. This deals
+      // gracefully with temporary hiccups or rate-limits on the upstream API.
+      let response: AxiosResponse<BlockInfo[]> | null = null;
+      for (
+        this.retryAttempts = 0;
+        this.retryAttempts < this.maxRetries;
+        this.retryAttempts++
+      ) {
+        try {
+          response = await this.axiosInstance.get<BlockInfo[]>("/blocks");
+          break; // success – leave retry loop
+        } catch (err) {
+          if (this.retryAttempts === this.maxRetries - 1) throw err;
+          await this.sleep(this.getBackoffDelay());
+        }
+      }
+      // If for some reason we still don't have a response, return an empty array
+      if (!response) return [];
+
       blockData = response.data;
 
       // Cache successful response
@@ -187,10 +224,35 @@ export class MempoolService {
   }
 
   async getMempoolBlocks(): Promise<UpcomingBlock[]> {
+    // Return cached mempool data if it is still fresh
+    if (
+      this.lastSuccessfulFetch &&
+      Date.now() - this.lastSuccessfulFetch.timestamp < this.cacheTTL &&
+      this.lastSuccessfulFetch.mempoolBlocks.length > 0
+    ) {
+      return this.lastSuccessfulFetch.mempoolBlocks;
+    }
+
     try {
-      const response = await this.axiosInstance.get<UpcomingBlock[]>(
-        "/fees/mempool-blocks",
-      );
+      // Retry the request a few times with exponential back-off. This deals
+      // gracefully with temporary hiccups or rate-limits on the upstream API.
+      let response: AxiosResponse<UpcomingBlock[]> | null = null;
+      for (
+        this.retryAttempts = 0;
+        this.retryAttempts < this.maxRetries;
+        this.retryAttempts++
+      ) {
+        try {
+          response = await this.axiosInstance.get<UpcomingBlock[]>(
+            "/fees/mempool-blocks",
+          );
+          break;
+        } catch (err) {
+          if (this.retryAttempts === this.maxRetries - 1) throw err;
+          await this.sleep(this.getBackoffDelay());
+        }
+      }
+      if (!response) return [];
 
       // Cache successful response
       if (this.lastSuccessfulFetch) {
