@@ -81,6 +81,14 @@ export class UnisatService {
   private readonly baseUrl: string;
   private readonly network: string;
   private readonly feeRate: number;
+  private readonly orderStatusCache = new Map<
+    string,
+    { timestamp: number; data: UnisatOrderStatus["data"] }
+  >();
+
+  private cacheTTL = 60000; // 1 minute cache
+  private maxRetries = 5;
+  private retryDelay = 2000; // Start with 2 seconds
 
   constructor() {
     if (!env.UNISAT_API) {
@@ -94,6 +102,14 @@ export class UnisatService {
       this.network === "testnet"
         ? "https://open-api-testnet.unisat.io"
         : "https://open-api.unisat.io";
+  }
+
+  private getBackoffDelay(attempt: number): number {
+    return this.retryDelay * Math.pow(2, attempt) + Math.random() * 1000;
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   generateInscriptionPayload(
@@ -211,33 +227,72 @@ export class UnisatService {
   }
 
   async getOrderStatus(orderId: string): Promise<UnisatOrderStatus["data"]> {
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/v2/inscribe/order/${orderId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`UniSat API error: ${response.status} - ${errorText}`);
-      }
-
-      const result: UnisatOrderStatus =
-        (await response.json()) as UnisatOrderStatus;
-
-      if (result.code !== 0) {
-        throw new Error(`UniSat API error: ${result.msg}`);
-      }
-
-      return result.data;
-    } catch (error) {
-      console.error(`Error getting UniSat order status for ${orderId}:`, error);
-      throw error;
+    const cached = this.orderStatusCache.get(orderId);
+    if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
+      console.log(`♻️ Returning cached status for order ${orderId}`);
+      return cached.data;
     }
+
+    for (let attempt = 0; attempt < this.maxRetries; attempt++) {
+      try {
+        const response = await fetch(
+          `${this.baseUrl}/v2/inscribe/order/${orderId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${this.apiKey}`,
+            },
+          },
+        );
+
+        if (response.status === 403 || response.status === 429) {
+          const errorText = await response.text();
+          console.warn(
+            `Rate limit exceeded for order ${orderId}. Retrying... (Attempt ${
+              attempt + 1
+            })`,
+            errorText,
+          );
+          if (attempt === this.maxRetries - 1) {
+            throw new Error(
+              `UniSat API error: ${response.status} - ${errorText}`,
+            );
+          }
+          await this.sleep(this.getBackoffDelay(attempt));
+          continue;
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `UniSat API error: ${response.status} - ${errorText}`,
+          );
+        }
+
+        const result: UnisatOrderStatus =
+          (await response.json()) as UnisatOrderStatus;
+
+        if (result.code !== 0) {
+          throw new Error(`UniSat API error: ${result.msg}`);
+        }
+
+        this.orderStatusCache.set(orderId, {
+          timestamp: Date.now(),
+          data: result.data,
+        });
+
+        return result.data;
+      } catch (error) {
+        console.error(
+          `Error getting UniSat order status for ${orderId}:`,
+          error,
+        );
+        if (attempt === this.maxRetries - 1) {
+          throw error;
+        }
+      }
+    }
+    // This should not be reachable if retries are configured
+    throw new Error(`Failed to get order status for ${orderId} after retries.`);
   }
 
   async waitForInscriptionCompletion(
