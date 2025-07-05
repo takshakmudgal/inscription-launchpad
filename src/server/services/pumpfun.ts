@@ -49,7 +49,7 @@ class PumpFunService {
       formData.append("description", proposal.description);
       formData.append("twitter", proposal.twitter || "");
       formData.append("telegram", proposal.telegram || "");
-      const proposalUrl = `https://bitmemes.fun/proposals/${proposal.id}`;
+      const proposalUrl = `https://bitpill.fun/proposals/${proposal.id}`;
       formData.append("website", proposalUrl);
       formData.append("showName", "true");
 
