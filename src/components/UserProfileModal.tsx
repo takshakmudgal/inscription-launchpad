@@ -17,6 +17,7 @@ interface UserProfileModalProps {
   onSubmit: (profileData: UserProfileData) => void;
   walletAddress: string;
   isRequired?: boolean;
+  initialData?: Partial<UserProfileData>;
 }
 
 export function UserProfileModal({
@@ -25,13 +26,14 @@ export function UserProfileModal({
   onSubmit,
   walletAddress,
   isRequired = false,
+  initialData,
 }: UserProfileModalProps) {
   const [formData, setFormData] = useState<UserProfileData>({
-    username: "",
-    email: "",
-    twitter: "",
-    telegram: "",
-    bio: "",
+    username: initialData?.username ?? "",
+    email: initialData?.email ?? "",
+    twitter: initialData?.twitter ?? "",
+    telegram: initialData?.telegram ?? "",
+    bio: initialData?.bio ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);

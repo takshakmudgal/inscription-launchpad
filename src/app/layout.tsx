@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 const inter = Inter({ subsets: ["latin"] });
 import { type Metadata } from "next";
 import { WalletProvider } from "~/components/providers";
+import { Header } from "~/components/Header";
 import "~/server/init";
 
 export const metadata: Metadata = {
@@ -20,8 +21,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${inter.className} no-scrollbar-x`}>
-      <body className="no-scrollbar-x">
-        <WalletProvider>{children}</WalletProvider>
+      <body className="no-scrollbar-x bg-black">
+        <WalletProvider>
+          <Header />
+          {children}
+        </WalletProvider>
       </body>
     </html>
   );

@@ -185,30 +185,24 @@ export default function ProposalPage({ params }: ProposalPageProps) {
 
   return (
     <div className="min-h-screen bg-gray-950">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-orange-500/20 bg-black/90 backdrop-blur-xl">
-        <div className="container mx-auto px-4 py-4 sm:px-6">
-          <div className="flex items-center justify-between">
-            <Link
-              href="/"
-              className="flex items-center gap-2 text-white/80 transition-colors hover:text-white"
-            >
-              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="text-sm sm:text-base">Back to Proposals</span>
-            </Link>
-
-            {statusBadge && (
-              <div
-                className={`rounded-full px-3 py-1 text-xs font-bold sm:px-4 sm:py-2 sm:text-sm ${statusBadge.className}`}
-              >
-                {statusBadge.text}
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
       <div className="container mx-auto px-4 py-6 sm:px-6 sm:py-12">
+        <div className="mb-6 flex items-center justify-between sm:mb-8">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-white/80 transition-colors hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-sm sm:text-base">Back to Proposals</span>
+          </Link>
+
+          {statusBadge && (
+            <div
+              className={`rounded-full px-3 py-1 text-xs font-bold sm:px-4 sm:py-2 sm:text-sm ${statusBadge.className}`}
+            >
+              {statusBadge.text}
+            </div>
+          )}
+        </div>
         <div className="mx-auto max-w-4xl">
           {/* Main Content */}
           <motion.div

@@ -44,6 +44,9 @@ interface WalletContextType {
     telegram?: string;
     bio?: string;
   }) => Promise<void>;
+  isProposalModalOpen: boolean;
+  openProposalModal: () => void;
+  closeProposalModal: () => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -64,6 +67,8 @@ function AppWalletProvider({ children }: WalletProviderProps) {
   const [walletAddress, setWalletAddressState] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [isProposalModalOpen, setProposalModalOpen] = useState(false);
+
   useEffect(() => {
     const savedAddress = localStorage.getItem("walletAddress");
     if (savedAddress) {
@@ -148,6 +153,9 @@ function AppWalletProvider({ children }: WalletProviderProps) {
     setWalletAddress(null);
   };
 
+  const openProposalModal = () => setProposalModalOpen(true);
+  const closeProposalModal = () => setProposalModalOpen(false);
+
   const isConnected = walletAddress !== null;
   const hasCompleteProfile = userProfile !== null && !!userProfile.username;
 
@@ -163,6 +171,9 @@ function AppWalletProvider({ children }: WalletProviderProps) {
         isLoadingProfile,
         refreshProfile,
         updateProfile,
+        isProposalModalOpen,
+        openProposalModal,
+        closeProposalModal,
       }}
     >
       {children}
