@@ -18,7 +18,7 @@ const WalletMultiButton = dynamic(
   { ssr: false },
 );
 
-const CONTRACT_ADDRESS = "0xYourContractAddressHere"; // Replace with actual contract address
+const CONTRACT_ADDRESS = "GZcGneiDq6L6PsEPBjPJuDcEezc3NRNE5F47XqcZpump"; // Replace with actual contract address
 
 export function Header() {
   const {
@@ -82,7 +82,9 @@ export function Header() {
               className="sm:text-md relative cursor-pointer text-sm font-bold text-orange-400 lg:text-lg"
               onClick={handleCopy}
             >
-              {copied ? "Copied!" : "$BITPILL"}
+              {copied
+                ? "Copied!"
+                : "GZcGneiDq6L6PsEPBjPJuDcEezc3NRNE5F47XqcZpump"}
             </div>
             <a
               href="https://x.com/bitpilldotfun"
