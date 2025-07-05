@@ -8,6 +8,14 @@ import { inArray, eq } from "drizzle-orm";
 export class MempoolService {
   private readonly mempoolApiUrl: string;
   private axiosInstance: AxiosInstance;
+  private lastSuccessfulFetch: {
+    blocks: BlockInfo[];
+    mempoolBlocks: UpcomingBlock[];
+    timestamp: number;
+  } | null = null;
+  private retryAttempts = 0;
+  private maxRetries = 3;
+  private retryDelay = 1000; // Start with 1 second
 
   constructor() {
     this.mempoolApiUrl =
@@ -17,11 +25,19 @@ export class MempoolService {
 
     this.axiosInstance = axios.create({
       baseURL: this.mempoolApiUrl,
-      timeout: 10000,
+      timeout: 15000, // Increased timeout to 15 seconds
       headers: {
         "User-Agent": "BitPill/1.0",
       },
     });
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private getBackoffDelay(): number {
+    return Math.min(this.retryDelay * Math.pow(2, this.retryAttempts), 30000);
   }
 
   async getBlocks(limit = 25): Promise<BlockInfo[]> {
@@ -29,6 +45,21 @@ export class MempoolService {
     try {
       const response = await this.axiosInstance.get<BlockInfo[]>("/blocks");
       blockData = response.data;
+
+      // Cache successful response
+      if (this.lastSuccessfulFetch) {
+        this.lastSuccessfulFetch.blocks = blockData;
+        this.lastSuccessfulFetch.timestamp = Date.now();
+      } else {
+        this.lastSuccessfulFetch = {
+          blocks: blockData,
+          mempoolBlocks: [],
+          timestamp: Date.now(),
+        };
+      }
+
+      // Reset retry attempts on success
+      this.retryAttempts = 0;
     } catch (error) {
       console.error("Error fetching blocks from mempool.space:", error);
 
@@ -36,8 +67,16 @@ export class MempoolService {
       if (axios.isAxiosError(error)) {
         console.error("Axios error response:", error.response?.data);
 
+        // Check if we have cached data less than 5 minutes old
+        if (
+          this.lastSuccessfulFetch &&
+          Date.now() - this.lastSuccessfulFetch.timestamp < 300000
+        ) {
+          console.warn("Mempool API unavailable, returning cached block data");
+          return this.lastSuccessfulFetch.blocks;
+        }
+
         // For now, return empty array to prevent crashes
-        // In a production app, you might want to implement a cache here
         console.warn("Mempool API unavailable, returning empty block data");
         return [];
       }
@@ -47,7 +86,8 @@ export class MempoolService {
         !(error instanceof Error) ||
         !error.message.includes("Request failed")
       ) {
-        throw new Error("Failed to fetch blocks from mempool.space API");
+        console.warn("Network error, returning empty block data");
+        return [];
       }
 
       // Return empty array for network errors
@@ -151,10 +191,55 @@ export class MempoolService {
       const response = await this.axiosInstance.get<UpcomingBlock[]>(
         "/fees/mempool-blocks",
       );
+
+      // Cache successful response
+      if (this.lastSuccessfulFetch) {
+        this.lastSuccessfulFetch.mempoolBlocks = response.data;
+        this.lastSuccessfulFetch.timestamp = Date.now();
+      } else {
+        this.lastSuccessfulFetch = {
+          blocks: [],
+          mempoolBlocks: response.data,
+          timestamp: Date.now(),
+        };
+      }
+
       return response.data;
     } catch (error) {
       console.error("Error fetching mempool blocks:", error);
-      throw new Error("Failed to fetch mempool blocks");
+
+      // If mempool.space API fails, try to return cached/fallback data instead of throwing
+      if (axios.isAxiosError(error)) {
+        console.error("Axios error response:", error.response?.data);
+
+        // Check if we have cached data less than 5 minutes old
+        if (
+          this.lastSuccessfulFetch &&
+          Date.now() - this.lastSuccessfulFetch.timestamp < 300000
+        ) {
+          console.warn(
+            "Mempool API unavailable, returning cached mempool data",
+          );
+          return this.lastSuccessfulFetch.mempoolBlocks;
+        }
+
+        // For now, return empty array to prevent crashes
+        console.warn("Mempool API unavailable, returning empty mempool data");
+        return [];
+      }
+
+      // Only throw if it's not a network/API issue
+      if (
+        !(error instanceof Error) ||
+        !error.message.includes("Request failed")
+      ) {
+        console.warn("Network error, returning empty mempool data");
+        return [];
+      }
+
+      // Return empty array for network errors
+      console.warn("Network error, returning empty mempool data");
+      return [];
     }
   }
 }

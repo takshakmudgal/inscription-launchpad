@@ -8,12 +8,19 @@ export async function GET() {
     const blocks = await mempoolService.getBlocks();
     return NextResponse.json({ success: true, data: { blocks } });
   } catch (error) {
-    console.error("Error in /api/blocks/recent:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "An unknown error occurred";
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 },
-    );
+    // Log the error but don't spam logs with expected network errors
+    if (error instanceof Error && error.message.includes("ETIMEDOUT")) {
+      console.warn("Mempool API timeout in /api/blocks/recent");
+    } else {
+      console.error("Error in /api/blocks/recent:", error);
+    }
+
+    // Return success with empty data instead of 500 error
+    // This prevents frontend errors and reduces log spam
+    return NextResponse.json({
+      success: true,
+      data: { blocks: [] },
+      warning: "API temporarily unavailable",
+    });
   }
 }

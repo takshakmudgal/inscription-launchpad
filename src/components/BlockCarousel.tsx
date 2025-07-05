@@ -131,7 +131,20 @@ export const BlockCarousel = ({
   );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [consecutiveFailures, setConsecutiveFailures] = useState(0);
+  const [currentPollInterval, setCurrentPollInterval] = useState(12000);
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  const getPollingInterval = useCallback(() => {
+    // Exponential backoff: 12s, 24s, 48s, 96s, max 180s
+    const baseInterval = 12000;
+    const maxInterval = 180000; // 3 minutes
+    const backoffInterval = Math.min(
+      baseInterval * Math.pow(2, consecutiveFailures),
+      maxInterval,
+    );
+    return backoffInterval;
+  }, [consecutiveFailures]);
 
   const fetchConfirmedBlocks = useCallback(async () => {
     try {
@@ -150,18 +163,30 @@ export const BlockCarousel = ({
           return allBlocks.slice(-20);
         });
         setError(null);
+        setConsecutiveFailures(0); // Reset on success
       } else {
-        throw new Error(data.error || "Failed to fetch recent blocks");
+        // API returned success but with warning (e.g., cached data)
+        if (data.warning) {
+          console.warn("Blocks API warning:", data.warning);
+          // Don't increment failures for warnings, just log
+        } else {
+          throw new Error(data.error || "Failed to fetch recent blocks");
+        }
       }
     } catch (error) {
       console.error("Failed to fetch recent blocks", error);
-      setError(
-        error instanceof Error ? error.message : "An unknown error occurred",
-      );
+      setConsecutiveFailures((prev) => prev + 1);
+
+      // Only set error state if we have no existing blocks to show
+      if (confirmedBlocks.length === 0) {
+        setError(
+          error instanceof Error ? error.message : "An unknown error occurred",
+        );
+      }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [confirmedBlocks.length]);
 
   const fetchUpcomingBlock = useCallback(async () => {
     try {
@@ -191,14 +216,21 @@ export const BlockCarousel = ({
   }, [confirmedBlocks, onLatestBlock]);
 
   useEffect(() => {
+    const newInterval = getPollingInterval();
+    setCurrentPollInterval(newInterval);
+  }, [getPollingInterval]);
+
+  useEffect(() => {
     void fetchConfirmedBlocks();
     void fetchUpcomingBlock();
+
     const interval = setInterval(() => {
       void fetchConfirmedBlocks();
       void fetchUpcomingBlock();
-    }, 12000);
+    }, currentPollInterval);
+
     return () => clearInterval(interval);
-  }, [fetchConfirmedBlocks, fetchUpcomingBlock]);
+  }, [fetchConfirmedBlocks, fetchUpcomingBlock, currentPollInterval]);
 
   useEffect(() => {
     if (carouselRef.current) {

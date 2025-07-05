@@ -145,6 +145,7 @@ export interface ApiResponse<T> {
   data?: T;
   error?: string;
   message?: string;
+  warning?: string;
 }
 
 export interface UpcomingBlock {
