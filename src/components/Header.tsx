@@ -80,7 +80,6 @@ export function Header() {
           >
             <div
               className="sm:text-md relative cursor-pointer text-sm font-bold text-orange-400 lg:text-lg"
-              style={{ textShadow: "0 0 8px rgba(251, 146, 60, 0.8)" }}
               onClick={handleCopy}
             >
               {copied ? "Copied!" : "$BITPILL"}
