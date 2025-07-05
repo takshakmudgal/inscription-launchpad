@@ -13,7 +13,7 @@ export const env = createEnv({
       .url()
       .default("https://blockstream.info/testnet/api"),
     ORDINALS_WALLET_PATH: z.string().optional(),
-    INSCRIPTION_FEE_RATE: z.string().default("15"),
+    INSCRIPTION_FEE_RATE: z.string().default("3"),
     ORDINALSBOT_API_KEY: z.string().optional(),
     CRON_SECRET: z.string().optional(),
     UNISAT_API: z.string().optional(),

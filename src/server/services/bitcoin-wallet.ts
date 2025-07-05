@@ -108,7 +108,7 @@ export const bitcoinWallet = {
   },
 
   async sendPayment(payment: PaymentRequest): Promise<PaymentResult> {
-    const { toAddress, amount, feeRate = 15 } = payment;
+    const { toAddress, amount, feeRate = 3 } = payment;
     const wallet = await this.getWallet();
 
     console.log(`💸 Creating payment: ${amount} sats to ${toAddress}`);
