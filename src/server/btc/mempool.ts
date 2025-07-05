@@ -13,7 +13,6 @@ export class MempoolService {
     mempoolBlocks: UpcomingBlock[];
     timestamp: number;
   } | null = null;
-  private retryAttempts = 0;
   private maxRetries = 3;
   private retryDelay = 1000; // Start with 1 second
   /**
@@ -45,8 +44,29 @@ export class MempoolService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  private getBackoffDelay(): number {
-    return Math.min(this.retryDelay * Math.pow(2, this.retryAttempts), 30000);
+  private getBackoffDelay(retryAttempts: number): number {
+    return Math.min(this.retryDelay * Math.pow(2, retryAttempts), 30000);
+  }
+
+  private async requestWithRetry<T>(
+    request: () => Promise<AxiosResponse<T>>,
+  ): Promise<AxiosResponse<T> | null> {
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt < this.maxRetries; attempt++) {
+      try {
+        return await request();
+      } catch (err) {
+        lastError = err as Error;
+        if (attempt < this.maxRetries - 1) {
+          const delay = this.getBackoffDelay(attempt);
+          await this.sleep(delay);
+        }
+      }
+    }
+    if (lastError) {
+      throw lastError;
+    }
+    return null;
   }
 
   async getBlocks(limit = 25): Promise<BlockInfo[]> {
@@ -64,20 +84,10 @@ export class MempoolService {
     try {
       // Retry the request a few times with exponential back-off. This deals
       // gracefully with temporary hiccups or rate-limits on the upstream API.
-      let response: AxiosResponse<BlockInfo[]> | null = null;
-      for (
-        this.retryAttempts = 0;
-        this.retryAttempts < this.maxRetries;
-        this.retryAttempts++
-      ) {
-        try {
-          response = await this.axiosInstance.get<BlockInfo[]>("/blocks");
-          break; // success – leave retry loop
-        } catch (err) {
-          if (this.retryAttempts === this.maxRetries - 1) throw err;
-          await this.sleep(this.getBackoffDelay());
-        }
-      }
+      const response = await this.requestWithRetry(() =>
+        this.axiosInstance.get<BlockInfo[]>("/blocks"),
+      );
+
       // If for some reason we still don't have a response, return an empty array
       if (!response) return [];
 
@@ -94,9 +104,6 @@ export class MempoolService {
           timestamp: Date.now(),
         };
       }
-
-      // Reset retry attempts on success
-      this.retryAttempts = 0;
     } catch (error) {
       console.error("Error fetching blocks from mempool.space:", error);
 
@@ -236,72 +243,55 @@ export class MempoolService {
     try {
       // Retry the request a few times with exponential back-off. This deals
       // gracefully with temporary hiccups or rate-limits on the upstream API.
-      let response: AxiosResponse<UpcomingBlock[]> | null = null;
-      for (
-        this.retryAttempts = 0;
-        this.retryAttempts < this.maxRetries;
-        this.retryAttempts++
-      ) {
-        try {
-          response = await this.axiosInstance.get<UpcomingBlock[]>(
-            "/fees/mempool-blocks",
-          );
-          break;
-        } catch (err) {
-          if (this.retryAttempts === this.maxRetries - 1) throw err;
-          await this.sleep(this.getBackoffDelay());
-        }
-      }
+      const response = await this.requestWithRetry(() =>
+        this.axiosInstance.get<UpcomingBlock[]>("/fees/mempool-blocks"),
+      );
+
       if (!response) return [];
 
-      // Cache successful response
+      const mempoolBlocks = response.data;
+
       if (this.lastSuccessfulFetch) {
-        this.lastSuccessfulFetch.mempoolBlocks = response.data;
+        this.lastSuccessfulFetch.mempoolBlocks = mempoolBlocks;
         this.lastSuccessfulFetch.timestamp = Date.now();
       } else {
         this.lastSuccessfulFetch = {
           blocks: [],
-          mempoolBlocks: response.data,
+          mempoolBlocks,
           timestamp: Date.now(),
         };
       }
 
-      return response.data;
+      return mempoolBlocks;
     } catch (error) {
       console.error("Error fetching mempool blocks:", error);
-
-      // If mempool.space API fails, try to return cached/fallback data instead of throwing
+      // If mempool.space API fails, try to return cached/fallback data
       if (axios.isAxiosError(error)) {
         console.error("Axios error response:", error.response?.data);
-
-        // Check if we have cached data less than 5 minutes old
-        if (
-          this.lastSuccessfulFetch &&
-          Date.now() - this.lastSuccessfulFetch.timestamp < 300000
-        ) {
-          console.warn(
-            "Mempool API unavailable, returning cached mempool data",
-          );
-          return this.lastSuccessfulFetch.mempoolBlocks;
-        }
-
-        // For now, return empty array to prevent crashes
-        console.warn("Mempool API unavailable, returning empty mempool data");
-        return [];
       }
 
-      // Only throw if it's not a network/API issue
+      // Check if we have cached data less than 5 minutes old
       if (
-        !(error instanceof Error) ||
-        !error.message.includes("Request failed")
+        this.lastSuccessfulFetch &&
+        Date.now() - this.lastSuccessfulFetch.timestamp < 300000 &&
+        this.lastSuccessfulFetch.mempoolBlocks.length > 0
       ) {
-        console.warn("Network error, returning empty mempool data");
-        return [];
+        console.warn("Mempool API unavailable, returning cached mempool data");
+        return this.lastSuccessfulFetch.mempoolBlocks;
       }
-
-      // Return empty array for network errors
-      console.warn("Network error, returning empty mempool data");
+      // For now, return empty array to prevent crashes
+      console.warn("Mempool API unavailable, returning empty mempool data");
       return [];
+    }
+  }
+
+  async getRecommendedFees() {
+    try {
+      const response = await this.axiosInstance.get("/fees/recommended");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching recommended fees:", error);
+      return null;
     }
   }
 }
