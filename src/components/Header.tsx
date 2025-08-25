@@ -60,15 +60,8 @@ export function Header() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Image
-              src="/bitmemes_logo.png"
-              alt="BitPill Logo"
-              width={24}
-              height={24}
-              className="ultra-mobile-logo rounded-lg sm:h-8 sm:w-8 lg:h-10 lg:w-10"
-            />
             <h1 className="extra-mobile-title text-base font-bold text-orange-400 sm:text-lg lg:text-2xl">
-              BitPill
+              Inscription Launchpad
             </h1>
           </motion.div>
 
@@ -78,16 +71,16 @@ export function Header() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <div
+            {/* <div
               className="sm:text-md relative cursor-pointer text-sm font-bold text-orange-400 lg:text-lg"
               onClick={handleCopy}
             >
               {copied
                 ? "Copied!"
                 : "GZcGneiDq6L6PsEPBjPJuDcEezc3NRNE5F47XqcZpump"}
-            </div>
+            </div> */}
             <a
-              href="https://x.com/bitpilldotfun"
+              href="https://x.com/takshakmudgal"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -109,7 +102,7 @@ export function Header() {
               onClick={openProposalModal}
               className="hidden items-center gap-1.5 rounded-xl bg-orange-500 px-3 py-1.5 text-xs font-medium text-white transition-all duration-200 hover:bg-orange-400 hover:shadow-md sm:flex sm:px-4 sm:py-2 sm:text-sm lg:px-6 lg:py-3 lg:text-base"
             >
-              <span>Create Meme</span>
+              <span>Create Proposal</span>
             </button>
             <div className="scale-[0.65] sm:scale-75 lg:scale-100">
               <WalletMultiButton />
