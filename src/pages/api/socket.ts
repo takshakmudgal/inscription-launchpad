@@ -34,13 +34,11 @@ export default function handler(
         console.log("❌ Client disconnected:", socket.id);
       });
 
-      // Example message handler
       socket.on("message", (data) => {
         console.log("📨 Received message:", data);
         io.emit("message", data);
       });
 
-      // Broadcast to all clients
       socket.on("broadcast", (data) => {
         socket.broadcast.emit("broadcast", data);
       });
